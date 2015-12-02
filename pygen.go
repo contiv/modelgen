@@ -15,7 +15,7 @@ limitations under the License.
 
 package main
 
-import "github.com/contiv/objmodel/tools/modelgen/generators"
+import "github.com/contiv/modelgen/generators"
 
 // GenerateClient generates python client for the model
 func (s *Schema) GeneratePythonClient() (string, error) {

@@ -20,8 +20,8 @@ import (
 
 	"text/template"
 
-	"github.com/contiv/objmodel/tools/modelgen/generators"
-	"github.com/contiv/objmodel/tools/modelgen/texthelpers"
+	"github.com/contiv/modelgen/generators"
+	"github.com/contiv/modelgen/texthelpers"
 )
 
 var funcMap = template.FuncMap{

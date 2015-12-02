@@ -20,7 +20,7 @@ import (
 	"go/format"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/contiv/objmodel/tools/modelgen/generators"
+	"github.com/contiv/modelgen/generators"
 )
 
 var validPropertyTypes = []string{

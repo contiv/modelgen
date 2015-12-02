@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/contiv/objmodel/tools/modelgen/generators"
+	"github.com/contiv/modelgen/generators"
 )
 
 // Simple test to parse json schema

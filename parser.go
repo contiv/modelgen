@@ -20,7 +20,7 @@ import (
 	"errors"
 
 	log "github.com/Sirupsen/logrus"
-	"github.com/contiv/objmodel/tools/modelgen/texthelpers"
+	"github.com/contiv/modelgen/texthelpers"
 )
 
 // ParseSchema parses the json schema and returns a Schema object

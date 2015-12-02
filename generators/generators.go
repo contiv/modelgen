@@ -5,7 +5,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/contiv/objmodel/tools/modelgen/texthelpers"
+	"github.com/contiv/modelgen/texthelpers"
 )
 
 var templateMap = map[string]*template.Template{}
