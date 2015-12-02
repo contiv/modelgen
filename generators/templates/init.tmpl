@@ -1,0 +1,6 @@
+func Init() {
+  {{ range .Objects }} collections.{{ .Name }}s = make(map[string]*{{ initialCap .Name }})
+  {{ end }}
+  {{ range .Objects }} restore{{ initialCap .Name}}()
+  {{ end }}
+}

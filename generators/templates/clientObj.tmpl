@@ -1,0 +1,48 @@
+// Post{{ initialCap .Name }} posts the {{.Name}} object
+func (c *ContivClient) Post{{ initialCap .Name }}(obj *{{ initialCap .Name }}) error {
+	// build key and URL
+	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{initialCap .}} {{else}}+ ":" + obj.{{initialCap .}} {{end}}{{end}}
+	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
+
+	// http post the object
+	err := httpPost(url, obj)
+	if err != nil {
+		log.Errorf("Error creating {{ .Name }} %+v. Err: %v", obj, err)
+		return err
+	}
+
+	return nil
+}
+
+// Get{{ initialCap .Name }} gets the {{ .Name }} object
+func (c *ContivClient) Get{{ initialCap .Name }}({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}, error) {
+	// build key and URL
+	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} {{else}}+ ":" + {{ .}} {{end}}{{end}}
+	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
+
+	// http get the object
+	var obj {{ initialCap .Name }}
+	err := httpGet(url, &obj)
+	if err != nil {
+		log.Errorf("Error getting {{ .Name }} %+v. Err: %v", keyStr, err)
+		return nil, err
+	}
+
+	return &obj, nil
+}
+
+// Delete{{ initialCap .Name }} deletes the {{ .Name }} object
+func (c *ContivClient) Delete{{ initialCap .Name }}({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) error {
+	// build key and URL
+	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} {{else}}+ ":" + {{ .}} {{end}}{{end}}
+	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
+
+	// http get the object
+	err := httpDelete(url)
+	if err != nil {
+		log.Errorf("Error deleting {{ .Name }} %s. Err: %v", keyStr, err)
+		return err
+	}
+
+	return nil
+}

@@ -1,0 +1,5 @@
+{{ range .Objects }}
+func Register{{ initialCap .Name }}Callbacks(handler {{ initialCap .Name }}Callbacks) {
+  objCallbackHandler.{{ initialCap .Name }}Cb = handler
+}
+{{ end }}

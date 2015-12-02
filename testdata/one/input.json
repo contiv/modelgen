@@ -1,0 +1,69 @@
+{
+	"name": "contivModel",
+	"objects": [
+		{
+			"name": "tenant",
+			"type": "object",
+			"key": ["tenantName"],
+			"properties": {
+				"tenantName": {
+					"type": "string",
+					"description": "Tenant Name"
+				}
+			},
+			"link-sets": {
+				"networks": {
+					"ref": "network"
+				}
+			}
+		},
+		{
+			"name": "network",
+			"type": "object",
+			"key": ["tenantName", "networkName" ],
+			"properties": {
+        "policies": {
+          "type": "array",
+          "items": "string"
+        },
+				"networkName": {
+					"type": "string"
+				},
+				"tenantName": {
+					"type": "string"
+				},
+				"isPublic": {
+					"type": "bool",
+					"default": "false"
+				},
+				"isPrivate": {
+					"type": "bool",
+					"default": "true"
+				},
+				"encap": {
+					"type": "string",
+					"length": 32
+				},
+				"pktTag": {
+					"type": "int",
+					"min": 1,
+					"max": 4094,
+					"default": "1"
+				},
+				"subnet": {
+					"type": "string",
+					"format": "^([0-9]{1,3}?.[0-9]{1,3}?.[0-9]{1,3}?.[0-9]{1,3}?/[0-9]{1,2}?)$"
+				},
+				"labels": {
+					"type": "array",
+					"items": "string"
+				}
+			},
+			"links": {
+				"tenant": {
+					"ref": "tenant"
+				}
+			}
+		}
+	]
+}

@@ -1,0 +1,6 @@
+type Collections struct {
+  {{ range .Objects }} {{ .Name }}s map[string]*{{ initialCap .Name }}
+  {{ end }}
+}
+
+var collections Collections

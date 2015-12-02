@@ -1,0 +1,31 @@
+	# Create {{ .Name }}
+	def create{{ initialCap .Name }}(self, obj):
+	    postUrl = self.baseUrl + '/api/{{ initialCap .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
+
+	    jdata = json.dumps({ {{range $index, $element := .Properties}}
+			"{{ .Name}}": obj.{{.Name}}, {{end}}
+	    })
+
+	    # Post the data
+	    response = httpPost(postUrl, jdata)
+
+	    if response == "Error":
+	        errorExit("{{ initialCap .Name }} create failure")
+
+	# Delete {{ .Name }}
+	def delete{{ initialCap .Name }}(self, {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}}, {{ .}}{{end}}{{end}}):
+	    # Delete {{ initialCap .Name }}
+	    deleteUrl = self.baseUrl + '/api/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} {{else}}+ ":" + {{ .}} {{end}}{{end}} + '/'
+	    response = httpDelete(deleteUrl)
+
+	    if response == "Error":
+	        errorExit("{{ initialCap .Name }} create failure")
+
+	# List all {{ .Name }} objects
+	def list{{ initialCap .Name }}(self):
+	    # Get a list of {{ .Name }} objects
+	    retDate = urllib2.urlopen(self.baseUrl + '/api/{{ .Name }}s/')
+	    if retData == "Error":
+	        errorExit("list {{ initialCap .Name }} failed")
+
+	    return json.loads(retData)

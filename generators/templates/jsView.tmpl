@@ -1,0 +1,58 @@
+var {{ initialCap .Name }}SummaryView = React.createClass({
+  	render: function() {
+		var self = this
+
+		// Walk thru all objects
+		var {{ .Name }}ListView = self.props.{{ .Name }}s.map(function({{ .Name }}){
+			return (
+				<ModalTrigger modal={<{{ initialCap .Name }}ModalView {{ .Name }}={ {{ .Name }} }/>}>
+					<tr key={ {{ .Name }}.key } className="info">
+						{{ $objName := .Name }}
+						{{range $element := .Properties }} {{if eq $element.ShowSummary true}}
+						<td>{ {{ $objName }}.{{ $element.Name }} }</td>
+						{{end}}{{end}}
+					</tr>
+				</ModalTrigger>
+			);
+		});
+
+		return (
+        <div>
+			<Table hover>
+				<thead>
+					<tr>
+					{{ $objName := .Name }}
+					{{range $element := .Properties }} {{if eq $element.ShowSummary true}}
+						<th> {{ $element.Title }} </th> {{end}}{{end}}
+					</tr>
+				</thead>
+				<tbody>
+            		{ {{ .Name }}ListView }
+				</tbody>
+			</Table>
+        </div>
+    	);
+	}
+});
+
+var {{ initialCap .Name }}ModalView = React.createClass({
+	render() {
+		var obj = this.props.{{.Name}}
+	    return (
+	      <Modal {...this.props} bsStyle='primary' bsSize='large' title='{{ initialCap .Name }}' animation={false}>
+	        <div className='modal-body' style={ {margin: '5%',} }>
+			{{ $objName := .Name }}
+			{{range $element := .Properties }}
+				<Input type='text' label='{{ $element.Title }}' ref='{{ $element.Name }}' defaultValue={obj.{{$element.Name}}} placeholder='{{ $element.Title }}' />
+			{{end}}
+			</div>
+	        <div className='modal-footer'>
+				<Button onClick={this.props.onRequestHide}>Close</Button>
+	        </div>
+	      </Modal>
+	    );
+  	}
+});
+
+module.exports.{{ initialCap .Name }}SummaryView = {{ initialCap .Name }}SummaryView
+module.exports.{{ initialCap .Name }}ModalView = {{ initialCap .Name }}ModalView

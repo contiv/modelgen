@@ -1,0 +1,329 @@
+// Simple Wrapper for http handlers
+func makeHttpHandler(handlerFunc HttpApiFunc) http.HandlerFunc {
+	// Create a closure and return an anonymous function
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Call the handler
+		resp, err := handlerFunc(w, r, mux.Vars(r))
+		if err != nil {
+			// Log error
+			log.Errorf("Handler for %s %s returned error: %s", r.Method, r.URL, err)
+
+			// Send HTTP response
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		} else {
+			// Send HTTP response as Json
+			err = writeJSON(w, http.StatusOK, resp)
+			if err != nil {
+				log.Errorf("Error generating json. Err: %v", err)
+			}
+		}
+	}
+}
+
+// writeJSON: writes the value v to the http response stream as json with standard
+// json encoding.
+func writeJSON(w http.ResponseWriter, code int, v interface{}) error {
+	// Set content type as json
+	w.Header().Set("Content-Type", "application/json")
+
+	// write the HTTP status code
+	w.WriteHeader(code)
+
+	// Write the Json output
+	return json.NewEncoder(w).Encode(v)
+}
+
+// Add all routes for REST handlers
+func AddRoutes(router *mux.Router) {
+	var route, listRoute string
+  {{ range .Objects }}
+	// Register {{.Name}}
+	route = "/api/{{.Name}}s/{key}/"
+	listRoute = "/api/{{.Name}}s/"
+	log.Infof("Registering %s", route)
+	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpList{{initialCap .Name}}s))
+	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGet{{initialCap .Name}}))
+	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreate{{initialCap .Name}}))
+	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreate{{initialCap .Name}}))
+	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDelete{{initialCap .Name}}))
+  {{ end }}
+}
+
+{{ range .Objects }}
+// LIST REST call
+func httpList{{ initialCap .Name }}s(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpList{{ initialCap .Name }}s: %+v", vars)
+
+	list := make([]*{{ initialCap .Name }}, 0)
+	for _, obj := range collections.{{ .Name }}s {
+		list = append(list, obj)
+	}
+
+	// Return the list
+	return list, nil
+}
+
+// GET REST call
+func httpGet{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpGet{{ initialCap .Name }}: %+v", vars)
+
+	key := vars["key"]
+
+	obj := collections.{{ .Name }}s[key]
+	if obj == nil {
+		log.Errorf("{{ .Name }} %s not found", key)
+		return nil, errors.New("{{ .Name }} not found")
+	}
+
+	// Return the obj
+	return obj, nil
+}
+
+// CREATE REST call
+func httpCreate{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpGet{{ initialCap .Name }}: %+v", vars)
+
+	var obj {{ initialCap .Name }}
+	key := vars["key"]
+
+	// Get object from the request
+	err := json.NewDecoder(r.Body).Decode(&obj)
+	if err != nil {
+		log.Errorf("Error decoding {{ .Name }} create request. Err %v", err)
+		return nil, err
+	}
+
+	// set the key
+	obj.Key = key
+
+	// Create the object
+	err = Create{{ initialCap .Name }}(&obj)
+	if err != nil {
+		log.Errorf("Create{{ initialCap .Name }} error for: %+v. Err: %v", obj, err)
+		return nil, err
+	}
+
+	// Return the obj
+	return obj, nil
+}
+
+// DELETE rest call
+func httpDelete{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpDelete{{ initialCap .Name }}: %+v", vars)
+
+	key := vars["key"]
+
+	// Delete the object
+	err := Delete{{ initialCap .Name }}(key)
+	if err != nil {
+		log.Errorf("Delete{{ initialCap .Name }} error for: %s. Err: %v", key, err)
+		return nil, err
+	}
+
+	// Return the obj
+	return key, nil
+}
+
+// Create a {{ .Name }} object
+func Create{{ initialCap .Name }}(obj *{{ initialCap .Name }}) error {
+	// Validate parameters
+	err := Validate{{ initialCap .Name }}(obj)
+	if err != nil {
+		log.Errorf("Validate{{ initialCap .Name }} retruned error for: %+v. Err: %v", obj, err)
+		return err
+	}
+
+	// Check if we handle this object
+	if objCallbackHandler.{{ initialCap .Name }}Cb == nil {
+		log.Errorf("No callback registered for {{ .Name }} object")
+		return errors.New("Invalid object type")
+	}
+
+	// Check if object already exists
+	if collections.{{ .Name }}s[obj.Key] != nil {
+		// Perform Update callback
+		err = objCallbackHandler.{{ initialCap .Name }}Cb.{{ initialCap .Name }}Update(collections.{{ .Name }}s[obj.Key], obj)
+		if err != nil {
+			log.Errorf("{{ initialCap .Name }}Update retruned error for: %+v. Err: %v", obj, err)
+			return err
+		}
+	} else {
+		// save it in cache
+		collections.{{ .Name }}s[obj.Key] = obj
+
+		// Perform Create callback
+		err = objCallbackHandler.{{ initialCap .Name }}Cb.{{ initialCap .Name }}Create(obj)
+		if err != nil {
+			log.Errorf("{{ initialCap .Name }}Create retruned error for: %+v. Err: %v", obj, err)
+			delete(collections.{{ .Name }}s, obj.Key)
+			return err
+		}
+	}
+
+	// Write it to modeldb
+	err = obj.Write()
+	if err != nil {
+		log.Errorf("Error saving {{ .Name }} %s to db. Err: %v", obj.Key, err)
+		return err
+	}
+
+	return nil
+}
+
+// Return a pointer to {{ .Name }} from collection
+func Find{{ initialCap .Name }}(key string) *{{ initialCap .Name }} {
+	obj := collections.{{ .Name }}s[key]
+	if obj == nil {
+		return nil
+	}
+
+	return obj
+}
+
+// Delete a {{ .Name }} object
+func Delete{{ initialCap .Name }}(key string) error {
+	obj := collections.{{ .Name }}s[key]
+	if obj == nil {
+		log.Errorf("{{ .Name }} %s not found", key)
+		return errors.New("{{ .Name }} not found")
+	}
+
+	// Check if we handle this object
+	if objCallbackHandler.{{ initialCap .Name }}Cb == nil {
+		log.Errorf("No callback registered for {{ .Name }} object")
+		return errors.New("Invalid object type")
+	}
+
+	// Perform callback
+	err := objCallbackHandler.{{ initialCap .Name }}Cb.{{ initialCap .Name }}Delete(obj)
+	if err != nil {
+		log.Errorf("{{ initialCap .Name }}Delete retruned error for: %+v. Err: %v", obj, err)
+		return err
+	}
+
+	// delete it from modeldb
+	err = obj.Delete()
+	if err != nil {
+		log.Errorf("Error deleting {{ .Name }} %s. Err: %v", obj.Key, err)
+	}
+
+	// delete it from cache
+	delete(collections.{{ .Name }}s, key)
+
+	return nil
+}
+
+func (self *{{ initialCap .Name }}) GetType() string {
+	return "{{ .Name }}"
+}
+
+func (self *{{ initialCap .Name }}) GetKey() string {
+	return self.Key
+}
+
+func (self *{{ initialCap .Name }}) Read() error {
+	if self.Key == "" {
+		log.Errorf("Empty key while trying to read {{ .Name }} object")
+		return errors.New("Empty key")
+	}
+
+	return modeldb.ReadObj("{{ .Name }}", self.Key, self)
+}
+
+func (self *{{ initialCap .Name }}) Write() error {
+	if self.Key == "" {
+		log.Errorf("Empty key while trying to Write {{ .Name }} object")
+		return errors.New("Empty key")
+	}
+
+	return modeldb.WriteObj("{{ .Name }}", self.Key, self)
+}
+
+func (self *{{ initialCap .Name }}) Delete() error {
+	if self.Key == "" {
+		log.Errorf("Empty key while trying to Delete {{ .Name }} object")
+		return errors.New("Empty key")
+	}
+
+	return modeldb.DeleteObj("{{ .Name }}", self.Key)
+}
+
+func restore{{ initialCap .Name }}() error {
+	strList, err := modeldb.ReadAllObj("{{ .Name }}")
+	if err != nil {
+		log.Errorf("Error reading {{ .Name }} list. Err: %v", err)
+	}
+
+	for _, objStr := range strList {
+		// Parse the json model
+		var {{ .Name }} {{ initialCap .Name }}
+		err = json.Unmarshal([]byte(objStr), &{{ .Name }})
+		if err != nil {
+			log.Errorf("Error parsing object %s, Err %v", objStr, err)
+			return err
+		}
+
+		// add it to the collection
+		collections.{{ .Name }}s[{{ .Name }}.Key] = &{{ .Name }}
+	}
+
+	return nil
+}
+
+// Validate a {{.Name}} object
+func Validate{{initialCap .Name}}(obj *{{initialCap .Name}}) error {
+	// Validate key is correct
+	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{initialCap .}} {{else}}+ ":" + obj.{{initialCap .}} {{end}}{{end}}
+	if obj.Key != keyStr {
+		log.Errorf("Expecting {{initialCap .Name}} Key: %s. Got: %s", keyStr, obj.Key)
+		return errors.New("Invalid Key")
+	}
+
+	// Validate each field
+	{{range $element := .Properties}}{{if eq $element.Type "int"}}{{if ne $element.Default ""}}
+	if obj.{{initialCap $element.Name}} == 0 {
+		obj.{{initialCap $element.Name}} = {{$element.Default}}
+	}
+{{end}} {{if ne $element.Min 0.0}}
+	if obj.{{initialCap $element.Name}} < {{$element.Min}} {
+		return errors.New("{{$element.Name}} Value Out of bound")
+	}
+{{end}} {{if ne $element.Max 0.0}}
+	if obj.{{initialCap $element.Name}} > {{$element.Max}} {
+		return errors.New("{{$element.Name}} Value Out of bound")
+	}
+{{end}} {{else if eq $element.Type "number"}} {{if ne $element.Default ""}}
+	if obj.{{initialCap $element.Name}} == 0 {
+		obj.{{$element.Name}} = {{$element.Default}}
+	}
+{{end}} {{if ne $element.Min 0.0}}
+	if obj.{{initialCap $element.Name}} < {{$element.Min}} {
+		return errors.New("{{$element.Name}} Value Out of bound")
+	}
+{{end}} {{if ne $element.Max 0.0}}
+	if obj.{{initialCap $element.Name}} > {{$element.Max}} {
+		return errors.New("{{$element.Name}} Value Out of bound")
+	}
+{{end}} {{else if eq $element.Type "bool"}} {{if ne $element.Default ""}}
+	if obj.{{initialCap $element.Name}} == false {
+		obj.{{initialCap $element.Name}} = {{$element.Default}}
+	}
+{{end}} {{else if eq $element.Type "string"}} {{if ne $element.Default ""}}
+	if obj.{{initialCap $element.Name}} == "" {
+		obj.{{initialCap $element.Name}} = {{$element.Default}}
+	}
+{{end}} {{if ne $element.Length 0}}
+	if len(obj.{{initialCap $element.Name}}) > {{$element.Length}} {
+		return errors.New("{{$element.Name}} string too long")
+	}
+{{end}} {{if ne $element.Format ""}}
+	{{$element.Name}}Match := regexp.MustCompile("{{$element.Format}}")
+	if {{$element.Name}}Match.MatchString(obj.{{initialCap $element.Name}}) == false {
+		return errors.New("{{$element.Name}} string invalid format")
+	}
+{{end}} {{end}} {{end}}
+
+	return nil
+}
+
+{{ end }}
