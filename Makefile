@@ -12,7 +12,7 @@ vet:
 generator:
 	cd generators && bash build.sh >templates.go && gofmt -w -s templates.go
 
-test: 
+test: godep
 	godep go test -v ./...
 
 reflex:
