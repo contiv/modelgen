@@ -16,7 +16,6 @@ limitations under the License.
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -25,18 +24,38 @@ import (
 	"strings"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/codegangsta/cli"
 	"github.com/contiv/modelgen/generators"
 )
 
-const defaultOutPath = "output"
-
-var (
-	sourceDir = flag.String("s", "./", "Location of json schema")
-	outputDir = flag.String("o", "output", "Output directory")
-)
+var app *cli.App
 
 func main() {
-	flag.Parse()
+	app = cli.NewApp()
+	app.Usage = "Generate REST scaffolding from a json-described object model"
+	app.ArgsUsage = "[source directory] [output directory]"
+	app.HideHelp = true
+	app.Version = ""
+	app.Action = run
+	app.Run(os.Args)
+}
+
+func run(ctx *cli.Context) {
+	if len(ctx.Args()) != 2 {
+		cli.ShowAppHelp(ctx)
+		os.Exit(1)
+	}
+
+	sourceDir := ctx.Args()[0]
+	if sourceDir == "" {
+		sourceDir = "."
+	}
+
+	outputDir := ctx.Args()[1]
+	if outputDir == "" {
+		outputDir = "output"
+	}
+
 	if err := generators.ParseTemplates(); err != nil {
 		panic(err)
 	}
@@ -44,7 +63,7 @@ func main() {
 	var schema *Schema
 
 	// Parse all files in input directory
-	err := filepath.Walk(*sourceDir, func(path string, fi os.FileInfo, err error) error {
+	err := filepath.Walk(sourceDir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
@@ -80,11 +99,7 @@ func main() {
 		log.Fatal("Could not find schema, aborting.")
 	}
 
-	if *outputDir == "" {
-		*outputDir = defaultOutPath
-	}
-
-	if err := os.MkdirAll(*outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		log.Fatalf("Error creating output directory: %v", err)
 	}
 
@@ -106,7 +121,7 @@ func main() {
 	}
 
 	for fn, content := range outputs {
-		target := path.Join(*outputDir, fn)
+		target := path.Join(outputDir, fn)
 		fmt.Printf("Generating file: %q\n", target)
 
 		if err := ioutil.WriteFile(target, content, 0666); err != nil {
