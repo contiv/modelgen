@@ -22,14 +22,17 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/modelgen/generators"
 )
 
+const defaultOutPath = "output"
+
 var (
-	source = flag.String("s", "./", "Location of json schema")
-	output = flag.String("o", "", "Output directory")
+	sourceDir = flag.String("s", "./", "Location of json schema")
+	outputDir = flag.String("o", "output", "Output directory")
 )
 
 func main() {
@@ -41,17 +44,17 @@ func main() {
 	var schema *Schema
 
 	// Parse all files in input directory
-	err := filepath.Walk(*source, func(path string, fi os.FileInfo, err error) error {
+	err := filepath.Walk(*sourceDir, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
 
 		// Ignore non-json files
-		if filepath.Ext(path) != ".json" || filepath.Dir(path) != filepath.Dir(*source) {
+		if filepath.Ext(path) != ".json" {
 			return nil
 		}
 
-		fmt.Printf("Parsing file: %s\n", path)
+		fmt.Printf("Parsing file: %q\n", path)
 
 		b, err := ioutil.ReadFile(path)
 		if err != nil {
@@ -73,68 +76,41 @@ func main() {
 		log.Fatal(err)
 	}
 
-	outPath := "./"
-	if *output != "" {
-		outPath = *output
-		if err := os.MkdirAll(outPath, 0755); err != nil {
-			log.Fatalf("Error creating output directory: %v", err)
+	if schema == nil {
+		log.Fatal("Could not find schema, aborting.")
+	}
+
+	if *outputDir == "" {
+		*outputDir = defaultOutPath
+	}
+
+	if err := os.MkdirAll(*outputDir, 0755); err != nil {
+		log.Fatalf("Error creating output directory: %v", err)
+	}
+
+	outputs := map[string][]byte{}
+	funcs := map[string]func() (string, error){
+		"go":        schema.GenerateGo,
+		"js":        schema.GenerateJs,
+		"client.go": schema.GenerateClient,
+		"py":        schema.GeneratePythonClient,
+	}
+
+	for ext, fun := range funcs {
+		str, err := fun()
+		if err != nil {
+			log.Fatalf("Error generating output: %v")
 		}
+
+		outputs[strings.Join([]string{schema.Name, ext}, ".")] = []byte(str)
 	}
 
-	// Generate Go code
-	outStr, err := schema.GenerateGo()
-	if err != nil {
-		log.Errorf("Error generating go structs. Err: %v", err)
-		// XXX fallthrough so we can write the files
-	}
+	for fn, content := range outputs {
+		target := path.Join(*outputDir, fn)
+		if err := ioutil.WriteFile(target, content, 0666); err != nil {
+			log.Fatal(err)
+		}
 
-	// Write the Go file output
-	goFileName := path.Join(outPath, schema.Name+".go")
-	fmt.Printf("Writing to file: %s\n", goFileName)
-	err = ioutil.WriteFile(goFileName, []byte(outStr), 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Generate javascript
-	outStr, err = schema.GenerateJs()
-	if err != nil {
-		log.Fatalf("Error generating javascript. Err: %v", err)
-	}
-
-	// Write javascript file
-	jsFileName := path.Join(outPath, schema.Name+".js")
-	fmt.Printf("Writing to file: %s\n", jsFileName)
-	err = ioutil.WriteFile(jsFileName, []byte(outStr), 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Generate go client
-	outStr, err = schema.GenerateClient()
-	if err != nil {
-		log.Fatalf("Error generating go client. Err: %v", err)
-	}
-
-	// Write go client file
-	goClientFileName := path.Join(outPath, schema.Name+"Client.go")
-	fmt.Printf("Writing to file: %s\n", goClientFileName)
-	err = ioutil.WriteFile(goClientFileName, []byte(outStr), 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// Generate python client
-	outStr, err = schema.GeneratePythonClient()
-	if err != nil {
-		log.Fatalf("Error generating go client. Err: %v", err)
-	}
-
-	// Write python file
-	pyClientFileName := path.Join(outPath, schema.Name+"Client.py")
-	fmt.Printf("Writing to file: %s\n", pyClientFileName)
-	err = ioutil.WriteFile(pyClientFileName, []byte(outStr), 0666)
-	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("Generated file: %q\n", target)
 	}
 }
