@@ -2,8 +2,8 @@ package client
 
 import (
 	log "github.com/Sirupsen/logrus"
-	"github.com/contiv/objmodel/objdb"
-	"github.com/contiv/objmodel/objdb/plugins"
+	"github.com/contiv/objdb"
+	"github.com/contiv/objdb/plugins"
 )
 
 // Create a new conf store

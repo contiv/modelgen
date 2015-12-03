@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	api "github.com/contiv/objmodel/objdb"
+	"github.com/contiv/objdb"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/go-etcd/etcd"
@@ -28,7 +28,7 @@ type serviceState struct {
 // Register a service
 // Service is registered with a ttl for 60sec and a goroutine is created
 // to refresh the ttl.
-func (self *EtcdPlugin) RegisterService(serviceInfo api.ServiceInfo) error {
+func (self *EtcdPlugin) RegisterService(serviceInfo objdb.ServiceInfo) error {
 	keyName := "/contiv.io/service/" + serviceInfo.ServiceName + "/" +
 		serviceInfo.HostAddr + ":" + strconv.Itoa(serviceInfo.Port)
 
@@ -64,7 +64,7 @@ func (self *EtcdPlugin) RegisterService(serviceInfo api.ServiceInfo) error {
 }
 
 // List all end points for a service
-func (self *EtcdPlugin) GetService(name string) ([]api.ServiceInfo, error) {
+func (self *EtcdPlugin) GetService(name string) ([]objdb.ServiceInfo, error) {
 	keyName := "/contiv.io/service/" + name + "/"
 
 	// Get the object from etcd client
@@ -84,11 +84,11 @@ func (self *EtcdPlugin) GetService(name string) ([]api.ServiceInfo, error) {
 		return nil, errors.New("Invalid Response from etcd")
 	}
 
-	srvcList := make([]api.ServiceInfo, 0)
+	srvcList := make([]objdb.ServiceInfo, 0)
 
 	// Parse each node in the directory
 	for _, node := range resp.Node.Nodes {
-		var respSrvc api.ServiceInfo
+		var respSrvc objdb.ServiceInfo
 		// Parse JSON response
 		err = json.Unmarshal([]byte(node.Value), &respSrvc)
 		if err != nil {
@@ -104,7 +104,7 @@ func (self *EtcdPlugin) GetService(name string) ([]api.ServiceInfo, error) {
 
 // Watch for a service
 func (self *EtcdPlugin) WatchService(name string,
-	eventCh chan api.WatchServiceEvent, stopCh chan bool) error {
+	eventCh chan objdb.WatchServiceEvent, stopCh chan bool) error {
 	keyName := "/contiv.io/service/" + name + "/"
 
 	// Create channels
@@ -120,7 +120,7 @@ func (self *EtcdPlugin) WatchService(name string,
 			log.Errorf("Error watching service %s. Err: %v", keyName, err)
 
 			// Emit the event
-			eventCh <- api.WatchServiceEvent{EventType: api.WatchServiceEventError}
+			eventCh <- objdb.WatchServiceEvent{EventType: objdb.WatchServiceEventError}
 		}
 		log.Infof("Watch thread exiting..")
 	}()
@@ -140,7 +140,7 @@ func (self *EtcdPlugin) WatchService(name string,
 				portNum, _ := strconv.Atoi(strings.Split(hostInfo, ":")[1])
 
 				// Build service info
-				srvInfo := api.ServiceInfo{
+				srvInfo := objdb.ServiceInfo{
 					ServiceName: srvName,
 					HostAddr:    hostAddr,
 					Port:        portNum,
@@ -153,8 +153,8 @@ func (self *EtcdPlugin) WatchService(name string,
 				if watchResp.Action == "set" {
 					log.Infof("Sending service add event: %+v", srvInfo)
 					// Send Add event
-					eventCh <- api.WatchServiceEvent{
-						EventType:   api.WatchServiceEventAdd,
+					eventCh <- objdb.WatchServiceEvent{
+						EventType:   objdb.WatchServiceEventAdd,
 						ServiceInfo: srvInfo,
 					}
 				} else if (watchResp.Action == "delete") ||
@@ -163,8 +163,8 @@ func (self *EtcdPlugin) WatchService(name string,
 					log.Infof("Sending service del event: %+v", srvInfo)
 
 					// Send Delete event
-					eventCh <- api.WatchServiceEvent{
-						EventType:   api.WatchServiceEventDel,
+					eventCh <- objdb.WatchServiceEvent{
+						EventType:   objdb.WatchServiceEventDel,
 						ServiceInfo: srvInfo,
 					}
 				}
@@ -184,7 +184,7 @@ func (self *EtcdPlugin) WatchService(name string,
 
 // Deregister a service
 // This removes the service from the registry and stops the refresh groutine
-func (self *EtcdPlugin) DeregisterService(serviceInfo api.ServiceInfo) error {
+func (self *EtcdPlugin) DeregisterService(serviceInfo objdb.ServiceInfo) error {
 	keyName := "/contiv.io/service/" + serviceInfo.ServiceName + "/" +
 		serviceInfo.HostAddr + ":" + strconv.Itoa(serviceInfo.Port)
 

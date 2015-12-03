@@ -20,7 +20,7 @@ package modeldb
 import (
 	"sync"
 
-	"github.com/contiv/objmodel/objdb/client"
+	"github.com/contiv/objdb/client"
 
 	log "github.com/Sirupsen/logrus"
 )

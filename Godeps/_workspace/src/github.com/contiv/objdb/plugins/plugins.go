@@ -1,7 +1,7 @@
 package plugins
 
 import (
-	"github.com/contiv/objmodel/objdb/plugins/etcdClient"
+	"github.com/contiv/objdb/plugins/etcdClient"
 )
 
 func Init() {

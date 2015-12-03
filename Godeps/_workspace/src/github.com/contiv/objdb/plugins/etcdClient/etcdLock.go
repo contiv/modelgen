@@ -4,10 +4,9 @@ import (
 	"sync"
 	"time"
 
-	api "github.com/contiv/objmodel/objdb"
-
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/go-etcd/etcd"
+	"github.com/contiv/objdb"
 )
 
 // Etcd error codes
@@ -24,7 +23,7 @@ type Lock struct {
 	ttl           uint64
 	timeout       uint64
 	modifiedIndex uint64
-	eventChan     chan api.LockEvent
+	eventChan     chan objdb.LockEvent
 	stopChan      chan bool
 	watchCh       chan *etcd.Response
 	watchStopCh   chan bool
@@ -33,14 +32,14 @@ type Lock struct {
 }
 
 // Create a new lock
-func (self *EtcdPlugin) NewLock(name string, myId string, ttl uint64) (api.LockInterface, error) {
+func (self *EtcdPlugin) NewLock(name string, myId string, ttl uint64) (objdb.LockInterface, error) {
 	// Create a lock
 	return &Lock{
 		name:        name,
 		myId:        myId,
 		ttl:         ttl,
 		client:      self.client,
-		eventChan:   make(chan api.LockEvent, 1),
+		eventChan:   make(chan objdb.LockEvent, 1),
 		stopChan:    make(chan bool, 1),
 		watchCh:     make(chan *etcd.Response, 1),
 		watchStopCh: make(chan bool, 1),
@@ -106,7 +105,7 @@ func (self *Lock) Kill() error {
 }
 
 // Return event channel
-func (self *Lock) EventChan() <-chan api.LockEvent {
+func (self *Lock) EventChan() <-chan objdb.LockEvent {
 	self.mutex.Lock()
 	defer self.mutex.Unlock()
 	return self.eventChan
@@ -166,7 +165,7 @@ func (self *Lock) acquireLock() {
 				self.mutex.Unlock()
 
 				// Send acquired message to event channel
-				self.eventChan <- api.LockEvent{EventType: api.LockAcquired}
+				self.eventChan <- objdb.LockEvent{EventType: objdb.LockAcquired}
 
 				// refresh it
 				self.refreshLock()
@@ -190,7 +189,7 @@ func (self *Lock) acquireLock() {
 			self.mutex.Unlock()
 
 			// Send acquired message to event channel
-			self.eventChan <- api.LockEvent{EventType: api.LockAcquired}
+			self.eventChan <- objdb.LockEvent{EventType: objdb.LockAcquired}
 
 			// Refresh lock
 			self.refreshLock()
@@ -247,7 +246,7 @@ func (self *Lock) waitForLock() {
 				self.mutex.Unlock()
 				log.Infof("Lock timeout on lock %s/%s", self.name, self.myId)
 
-				self.eventChan <- api.LockEvent{EventType: api.LockAcquireTimeout}
+				self.eventChan <- objdb.LockEvent{EventType: objdb.LockAcquireTimeout}
 
 				log.Infof("Lock acquire timed out. Stopping lock")
 
@@ -300,7 +299,7 @@ func (self *Lock) refreshLock() {
 				self.mutex.Unlock()
 
 				// Send lock lost event
-				self.eventChan <- api.LockEvent{EventType: api.LockLost}
+				self.eventChan <- objdb.LockEvent{EventType: objdb.LockLost}
 
 				// FIXME: trigger a lock lost event
 				return

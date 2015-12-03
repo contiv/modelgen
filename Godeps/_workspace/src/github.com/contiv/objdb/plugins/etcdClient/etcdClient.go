@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/contiv/objmodel/objdb"
+	"github.com/contiv/objdb"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/go-etcd/etcd"
