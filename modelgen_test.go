@@ -16,6 +16,7 @@ limitations under the License.
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -66,7 +67,7 @@ func TestParseJsonSchema(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if goStr != string(output) {
+		if !bytes.Equal(goStr, output) {
 			if err := ioutil.WriteFile("/tmp/generated.go", []byte(goStr), 0666); err != nil {
 				t.Fatalf("Err writing debug file `/tmp/generated.go` during failed test: %v", err)
 			}

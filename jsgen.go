@@ -32,8 +32,7 @@ var funcMap = template.FuncMap{
 	"translateType": texthelpers.TranslatePropertyType,
 }
 
-func (s *Schema) GenerateJs() (string, error) {
-	var goStr string
+func (s *Schema) GenerateJs() ([]byte, error) {
 	var buf bytes.Buffer
 
 	const hdr = `// {{.}}.js
@@ -44,24 +43,25 @@ func (s *Schema) GenerateJs() (string, error) {
 	// Generate file headers
 	tmpl, _ := template.New("hdrTmpl").Funcs(funcMap).Parse(hdr)
 	tmpl.Execute(&buf, s.Name)
-	goStr = goStr + buf.String()
 
 	//  Generate all object Views
 	for _, obj := range s.Objects {
-		objStr, err := obj.GenerateJsViews()
-		if err == nil {
-			goStr = goStr + objStr
+		objBytes, err := obj.GenerateJsViews()
+		if err != nil {
+			return nil, err
 		}
+
+		buf.Write(objBytes)
 	}
 
-	return goStr, nil
+	return buf.Bytes(), nil
 }
 
-func (obj *Object) GenerateJsViews() (string, error) {
-	goStr, err := generators.RunTemplate("jsView", obj)
+func (obj *Object) GenerateJsViews() ([]byte, error) {
+	goBytes, err := generators.RunTemplate("jsView", obj)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return goStr, nil
+	return goBytes, nil
 }

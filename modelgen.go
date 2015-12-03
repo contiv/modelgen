@@ -89,7 +89,7 @@ func main() {
 	}
 
 	outputs := map[string][]byte{}
-	funcs := map[string]func() (string, error){
+	funcs := map[string]func() ([]byte, error){
 		"go":        schema.GenerateGo,
 		"js":        schema.GenerateJs,
 		"client.go": schema.GenerateClient,
@@ -99,7 +99,7 @@ func main() {
 	for ext, fun := range funcs {
 		str, err := fun()
 		if err != nil {
-			log.Fatalf("Error generating output: %v")
+			log.Fatalf("Error generating output for target %q: %v", ext, err)
 		}
 
 		outputs[strings.Join([]string{schema.Name, ext}, ".")] = []byte(str)
@@ -107,10 +107,10 @@ func main() {
 
 	for fn, content := range outputs {
 		target := path.Join(*outputDir, fn)
+		fmt.Printf("Generating file: %q\n", target)
+
 		if err := ioutil.WriteFile(target, content, 0666); err != nil {
 			log.Fatal(err)
 		}
-
-		fmt.Printf("Generated file: %q\n", target)
 	}
 }

@@ -18,30 +18,32 @@ package main
 import "github.com/contiv/modelgen/generators"
 
 // GenerateClient generates python client for the model
-func (s *Schema) GeneratePythonClient() (string, error) {
+func (s *Schema) GeneratePythonClient() ([]byte, error) {
 	// Generate file headers
-	goStr, err := generators.RunTemplate("pyclientHdr", s)
+	goBytes, err := generators.RunTemplate("pyclientHdr", s)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	//  Generate clients for all objects
 	for _, obj := range s.Objects {
-		objStr, err := obj.GeneratePythonClientObjs()
-		if err == nil {
-			goStr = goStr + objStr
+		objBytes, err := obj.GeneratePythonClientObjs()
+		if err != nil {
+			return nil, err
 		}
+
+		goBytes = append(goBytes, objBytes...)
 	}
 
-	return goStr, nil
+	return goBytes, nil
 }
 
 // GeneratePythonClientObjs generates the python client for individual objects
-func (obj *Object) GeneratePythonClientObjs() (string, error) {
-	goStr, err := generators.RunTemplate("pyclientObj", obj)
+func (obj *Object) GeneratePythonClientObjs() ([]byte, error) {
+	goBytes, err := generators.RunTemplate("pyclientObj", obj)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return goStr, nil
+	return goBytes, nil
 }

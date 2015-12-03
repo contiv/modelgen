@@ -2,7 +2,6 @@ package generators
 
 import (
 	"bytes"
-	"strings"
 	"text/template"
 
 	"github.com/contiv/modelgen/texthelpers"
@@ -34,13 +33,13 @@ func GetTemplate(templateName string) *template.Template {
 	return templateMap[templateName]
 }
 
-func RunTemplate(templateName string, obj interface{}) (string, error) {
+func RunTemplate(templateName string, obj interface{}) ([]byte, error) {
 	buf := new(bytes.Buffer)
 
 	tmpl := GetTemplate(templateName)
 	if err := tmpl.Execute(buf, obj); err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return strings.TrimSuffix(buf.String(), "\n  "), nil
+	return bytes.TrimSuffix(buf.Bytes(), []byte("\n  ")), nil
 }
