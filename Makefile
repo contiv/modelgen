@@ -1,5 +1,8 @@
 all: test
 
+clean:
+	rm -rf output
+
 godep:
 	@if [ -z "`which godep`" ]; then go get -v github.com/kr/godep; fi
 
