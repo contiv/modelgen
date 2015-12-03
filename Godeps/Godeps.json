@@ -11,6 +11,11 @@
 			"Rev": "467d9d55c2d2c17248441a8fc661561161f40d5e"
 		},
 		{
+			"ImportPath": "github.com/codegangsta/cli",
+			"Comment": "1.2.0-155-g96f1fed",
+			"Rev": "96f1fedb28e10f2e5ad3fd4b7347101529a7ca56"
+		},
+		{
 			"ImportPath": "github.com/contiv/go-etcd/etcd",
 			"Comment": "v0.4.6-6-g4734e7a",
 			"Rev": "4734e7aca379f0d7fcdf04fbb2101696a4b45ce8"
