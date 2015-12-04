@@ -21,7 +21,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -105,10 +104,10 @@ func run(ctx *cli.Context) {
 
 	outputs := map[string][]byte{}
 	funcs := map[string]func() ([]byte, error){
-		"go":        schema.GenerateGo,
-		"js":        schema.GenerateJs,
-		"client.go": schema.GenerateClient,
-		"py":        schema.GeneratePythonClient,
+		".go":       schema.GenerateGo,
+		".js":       schema.GenerateJs,
+		"Client.go": schema.GenerateClient,
+		"Client.py": schema.GeneratePythonClient,
 	}
 
 	for ext, fun := range funcs {
@@ -117,7 +116,7 @@ func run(ctx *cli.Context) {
 			log.Fatalf("Error generating output for target %q: %v", ext, err)
 		}
 
-		outputs[strings.Join([]string{schema.Name, ext}, ".")] = []byte(str)
+		outputs[schema.Name+ext] = []byte(str)
 	}
 
 	for fn, content := range outputs {
