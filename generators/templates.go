@@ -140,7 +140,7 @@ func NewContivClient(baseURL string) (*ContivClient, error) {
 // Post{{ initialCap .Name }} posts the {{.Name}} object
 func (c *ContivClient) Post{{ initialCap .Name }}(obj *{{ initialCap .Name }}) error {
 	// build key and URL
-	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{initialCap .}} {{else}}+ ":" + obj.{{initialCap .}} {{end}}{{end}}
+	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{initialCap .}}{{else}} + ":" + obj.{{initialCap .}}{{end}}{{end}}
 	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
 
 	// http post the object
@@ -156,7 +156,7 @@ func (c *ContivClient) Post{{ initialCap .Name }}(obj *{{ initialCap .Name }}) e
 // Get{{ initialCap .Name }} gets the {{ .Name }} object
 func (c *ContivClient) Get{{ initialCap .Name }}({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}, error) {
 	// build key and URL
-	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} {{else}}+ ":" + {{ .}} {{end}}{{end}}
+	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
 	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
 
 	// http get the object
@@ -173,7 +173,7 @@ func (c *ContivClient) Get{{ initialCap .Name }}({{range $index, $element := .Ke
 // Delete{{ initialCap .Name }} deletes the {{ .Name }} object
 func (c *ContivClient) Delete{{ initialCap .Name }}({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) error {
 	// build key and URL
-	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} {{else}}+ ":" + {{ .}} {{end}}{{end}}
+	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
 	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
 
 	// http get the object
