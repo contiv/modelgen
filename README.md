@@ -14,16 +14,16 @@ Currently following are generated from the modelgen tool:
  - *Python client*: python REST client for the objects.
 
 ### Adding new object
-To add a new object simply create new json file in `contivModel` directory with all necessary attributes(See below for json schema guide) and run following command:
+To add a new object simply create new json file in `contiv/contivModel` repository with all necessary attributes(See below for json schema guide) and run following command:
 ```
-objmodel$ make build
+contivModel$ make build
 ```
 This will recompile the schema and generate backend and client libraries.
 To use the newly generated backend or client library, simply include it in your project
 
 ```
 import(
-    "github.com/contiv/objmodel/contivModel"
+    "github.com/contiv/contivModel"
     )
 ```
 
@@ -31,9 +31,9 @@ Note: If you are using godep in your project, you need to godep import the updat
 
 
 ### Modifying an existing object
-To modify an existing object, just modify the json schema in `contivModel` directory and run:
+To modify an existing object, just modify the json schema in `contiv/contivModel` repository and run:
 ```
-objmodel$ make build
+contivModel$ make build
 ```
 this will update the contivModel/contivModel.go and other client libraries.
 
@@ -83,7 +83,7 @@ package main
 import (
     "log"
 
-    "github.com/contiv/objmodel/contivModel"
+    "github.com/contiv/contivModel"
 )
 
 func main() {
