@@ -1,4 +1,4 @@
-all: build test
+all: test
 
 build: godep generator
 	godep go install -v
