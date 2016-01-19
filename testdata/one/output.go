@@ -19,7 +19,7 @@ type Tenant struct {
 	// every object has a key
 	Key string `json:"key,omitempty"`
 
-	TenantName string `json:"tenantName,omitempty"`
+	TenantName string `json:"tenantName,omitempty"` // Tenant Name
 
 	// add link-sets and links
 	LinkSets TenantLinkSets `json:"link-sets,omitempty"`
@@ -33,15 +33,15 @@ type Network struct {
 	// every object has a key
 	Key string `json:"key,omitempty"`
 
-	Encap       string   `json:"encap,omitempty"`
-	IsPrivate   bool     `json:"isPrivate,omitempty"`
-	IsPublic    bool     `json:"isPublic,omitempty"`
+	Encap       string   `json:"encap,omitempty"`     //
+	IsPrivate   bool     `json:"isPrivate,omitempty"` //
+	IsPublic    bool     `json:"isPublic,omitempty"`  //
 	Labels      []string `json:"labels,omitempty"`
-	NetworkName string   `json:"networkName,omitempty"`
-	PktTag      int      `json:"pktTag,omitempty"`
+	NetworkName string   `json:"networkName,omitempty"` //
+	PktTag      int      `json:"pktTag,omitempty"`      //
 	Policies    []string `json:"policies,omitempty"`
-	Subnet      string   `json:"subnet,omitempty"`
-	TenantName  string   `json:"tenantName,omitempty"`
+	Subnet      string   `json:"subnet,omitempty"`     //
+	TenantName  string   `json:"tenantName,omitempty"` //
 
 	Links NetworkLinks `json:"links,omitempty"`
 }

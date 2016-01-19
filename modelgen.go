@@ -67,8 +67,8 @@ func run(ctx *cli.Context) {
 			return err
 		}
 
-		// Ignore non-json files
-		if filepath.Ext(path) != ".json" {
+		// Ignore non-json files and ignore files in subdirs
+		if filepath.Ext(path) != ".json" || filepath.Dir(path) != filepath.Dir(sourceDir) {
 			return nil
 		}
 
@@ -102,25 +102,32 @@ func run(ctx *cli.Context) {
 		log.Fatalf("Error creating output directory: %v", err)
 	}
 
+	// create client dir
+	clientDir := path.Join(outputDir, "client")
+	if err := os.MkdirAll(clientDir, 0755); err != nil {
+		log.Fatalf("Error creating output directory: %v", err)
+	}
+
 	outputs := map[string][]byte{}
 	funcs := map[string]func() ([]byte, error){
-		".go":       schema.GenerateGo,
-		".js":       schema.GenerateJs,
-		"Client.go": schema.GenerateClient,
-		"Client.py": schema.GeneratePythonClient,
+		"%s.go":              schema.GenerateGo,
+		"client/%s.js":       schema.GenerateJs,
+		"client/%sClient.go": schema.GenerateClient,
+		"client/%sClient.py": schema.GeneratePythonClient,
 	}
 
-	for ext, fun := range funcs {
+	for frmt, fun := range funcs {
 		str, err := fun()
 		if err != nil {
-			log.Fatalf("Error generating output for target %q: %v", ext, err)
+			log.Fatalf("Error generating output for target %q: %v", frmt, err)
 		}
 
-		outputs[schema.Name+ext] = []byte(str)
+		outFilename := fmt.Sprintf(frmt, schema.Name)
+		outputs[outFilename] = []byte(str)
 	}
 
-	for fn, content := range outputs {
-		target := path.Join(outputDir, fn)
+	for outFilename, content := range outputs {
+		target := path.Join(outputDir, outFilename)
 		fmt.Printf("Generating file: %q\n", target)
 
 		if err := ioutil.WriteFile(target, content, 0666); err != nil {

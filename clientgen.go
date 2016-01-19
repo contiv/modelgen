@@ -25,6 +25,16 @@ func (s *Schema) GenerateClient() ([]byte, error) {
 		return nil, err
 	}
 
+	//  Generate all object definitions
+	for _, obj := range s.Objects {
+		objBytes, err := obj.GenerateGoStructs()
+		if err != nil {
+			return nil, err
+		}
+
+		goBytes = append(goBytes, objBytes...)
+	}
+
 	//  Generate clients for all objects
 	for _, obj := range s.Objects {
 		objBytes, err := obj.GenerateClientObjs()

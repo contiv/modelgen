@@ -1,5 +1,5 @@
-// Post{{ initialCap .Name }} posts the {{.Name}} object
-func (c *ContivClient) Post{{ initialCap .Name }}(obj *{{ initialCap .Name }}) error {
+// {{ initialCap .Name }}Post posts the {{.Name}} object
+func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) error {
 	// build key and URL
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{initialCap .}}{{else}} + ":" + obj.{{initialCap .}}{{end}}{{end}}
 	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
@@ -14,8 +14,8 @@ func (c *ContivClient) Post{{ initialCap .Name }}(obj *{{ initialCap .Name }}) e
 	return nil
 }
 
-// Get{{ initialCap .Name }} gets the {{ .Name }} object
-func (c *ContivClient) Get{{ initialCap .Name }}({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}, error) {
+// {{ initialCap .Name }}Get gets the {{ .Name }} object
+func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}, error) {
 	// build key and URL
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
 	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
@@ -31,8 +31,8 @@ func (c *ContivClient) Get{{ initialCap .Name }}({{range $index, $element := .Ke
 	return &obj, nil
 }
 
-// Delete{{ initialCap .Name }} deletes the {{ .Name }} object
-func (c *ContivClient) Delete{{ initialCap .Name }}({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) error {
+// {{ initialCap .Name }}Delete deletes the {{ .Name }} object
+func (c *ContivClient) {{ initialCap .Name }}Delete({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) error {
 	// build key and URL
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
 	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"

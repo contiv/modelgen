@@ -1,7 +1,7 @@
 all: test
 
-clean:
-	rm -rf output
+build: godep generator
+	godep go install -v
 
 godep:
 	@if [ -z "`which godep`" ]; then go get -v github.com/kr/godep; fi
