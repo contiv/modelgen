@@ -1,1 +1,1 @@
-{{ initialCap .Name }}{{ if eq .Type "array" }} []{{ translateType .Items }} `json:"{{ .Name }},omitempty"` {{ else }} {{ translateType .Type }} `json:"{{ .Name }},omitempty"` // {{.Description}} {{ end }}
+{{ initialCap .Name }}{{ if eq .Type "array" }} []{{ translateType .Items }} `json:"{{ .Name }},omitempty"` {{ else }} {{ translateType .Type }} `json:"{{ .Name }},omitempty"` // {{.Title}} {{ end }}

@@ -312,7 +312,7 @@ type {{ initialCap .Name }}Links struct {
 {{ end }}
   `,
 	"propstruct": `
-{{ initialCap .Name }}{{ if eq .Type "array" }} []{{ translateType .Items }} ` + "`" + `json:"{{ .Name }},omitempty"` + "`" + ` {{ else }} {{ translateType .Type }} ` + "`" + `json:"{{ .Name }},omitempty"` + "`" + ` // {{.Description}} {{ end }}
+{{ initialCap .Name }}{{ if eq .Type "array" }} []{{ translateType .Items }} ` + "`" + `json:"{{ .Name }},omitempty"` + "`" + ` {{ else }} {{ translateType .Type }} ` + "`" + `json:"{{ .Name }},omitempty"` + "`" + ` // {{.Title}} {{ end }}
   `,
 	"pyclientHdr": `
 # {{.Name}} REST client

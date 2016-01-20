@@ -19,7 +19,7 @@ type Tenant struct {
 	// every object has a key
 	Key string `json:"key,omitempty"`
 
-	TenantName string `json:"tenantName,omitempty"` // Tenant Name
+	TenantName string `json:"tenantName,omitempty"` //
 
 	// add link-sets and links
 	LinkSets TenantLinkSets `json:"link-sets,omitempty"`
