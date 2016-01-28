@@ -14,6 +14,22 @@ func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) e
 	return nil
 }
 
+// {{ initialCap .Name }}List lists all {{ .Name }} objects
+func (c *ContivClient) {{ initialCap .Name }}List() (*[]{{ initialCap .Name }}, error) {
+	// build key and URL
+	url := c.baseURL + "/api/{{ .Name }}s/"
+
+	// http get the object
+	var objList []{{ initialCap .Name }}
+	err := httpGet(url, &objList)
+	if err != nil {
+		log.Errorf("Error getting {{ .Name }}s. Err: %v", err)
+		return nil, err
+	}
+
+	return &objList, nil
+}
+
 // {{ initialCap .Name }}Get gets the {{ .Name }} object
 func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}, error) {
 	// build key and URL
