@@ -156,12 +156,12 @@ func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) e
 }
 
 // {{ initialCap .Name }}List lists all {{ .Name }} objects
-func (c *ContivClient) {{ initialCap .Name }}List() (*[]{{ initialCap .Name }}, error) {
+func (c *ContivClient) {{ initialCap .Name }}List() (*[]*{{ initialCap .Name }}, error) {
 	// build key and URL
 	url := c.baseURL + "/api/{{ .Name }}s/"
 
 	// http get the object
-	var objList []{{ initialCap .Name }}
+	var objList []*{{ initialCap .Name }}
 	err := httpGet(url, &objList)
 	if err != nil {
 		log.Errorf("Error getting {{ .Name }}s. Err: %v", err)
