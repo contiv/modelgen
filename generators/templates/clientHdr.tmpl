@@ -29,6 +29,14 @@ func httpGet(url string, jdata interface{}) error {
 		return errors.New("Page not found!")
 	case r.StatusCode == int(403):
 		return errors.New("Access denied!")
+	case r.StatusCode == int(500):
+		response, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			return err
+		}
+
+		return errors.New(string(response))
+
 	case r.StatusCode != int(200):
 		log.Debugf("GET Status '%s' status code %d \n", r.Status, r.StatusCode)
 		return errors.New(r.Status)
@@ -64,6 +72,14 @@ func httpDelete(url string) error {
 		return nil
 	case r.StatusCode == int(403):
 		return errors.New("Access denied!")
+	case r.StatusCode == int(500):
+		response, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			return err
+		}
+
+		return errors.New(string(response))
+
 	case r.StatusCode != int(200):
 		log.Debugf("DELETE Status '%s' status code %d \n", r.Status, r.StatusCode)
 		return errors.New(r.Status)
@@ -90,6 +106,14 @@ func httpPost(url string, jdata interface{}) error {
 		return errors.New("Page not found!")
 	case r.StatusCode == int(403):
 		return errors.New("Access denied!")
+	case r.StatusCode == int(500):
+		response, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			return err
+		}
+
+		return errors.New(string(response))
+
 	case r.StatusCode != int(200):
 		log.Debugf("POST Status '%s' status code %d \n", r.Status, r.StatusCode)
 		return errors.New(r.Status)

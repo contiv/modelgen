@@ -7,7 +7,7 @@ func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) e
 	// http post the object
 	err := httpPost(url, obj)
 	if err != nil {
-		log.Errorf("Error creating {{ .Name }} %+v. Err: %v", obj, err)
+		log.Debugf("Error creating {{ .Name }} %+v. Err: %v", obj, err)
 		return err
 	}
 
@@ -23,7 +23,7 @@ func (c *ContivClient) {{ initialCap .Name }}List() (*[]*{{ initialCap .Name }},
 	var objList []*{{ initialCap .Name }}
 	err := httpGet(url, &objList)
 	if err != nil {
-		log.Errorf("Error getting {{ .Name }}s. Err: %v", err)
+		log.Debugf("Error getting {{ .Name }}s. Err: %v", err)
 		return nil, err
 	}
 
@@ -40,7 +40,7 @@ func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Ke
 	var obj {{ initialCap .Name }}
 	err := httpGet(url, &obj)
 	if err != nil {
-		log.Errorf("Error getting {{ .Name }} %+v. Err: %v", keyStr, err)
+		log.Debugf("Error getting {{ .Name }} %+v. Err: %v", keyStr, err)
 		return nil, err
 	}
 
@@ -56,7 +56,7 @@ func (c *ContivClient) {{ initialCap .Name }}Delete({{range $index, $element := 
 	// http get the object
 	err := httpDelete(url)
 	if err != nil {
-		log.Errorf("Error deleting {{ .Name }} %s. Err: %v", keyStr, err)
+		log.Debugf("Error deleting {{ .Name }} %s. Err: %v", keyStr, err)
 		return err
 	}
 

@@ -49,6 +49,14 @@ func httpGet(url string, jdata interface{}) error {
 		return errors.New("Page not found!")
 	case r.StatusCode == int(403):
 		return errors.New("Access denied!")
+	case r.StatusCode == int(500):
+		response, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			return err
+		}
+
+		return errors.New(string(response))
+
 	case r.StatusCode != int(200):
 		log.Debugf("GET Status '%s' status code %d \n", r.Status, r.StatusCode)
 		return errors.New(r.Status)
@@ -84,6 +92,14 @@ func httpDelete(url string) error {
 		return nil
 	case r.StatusCode == int(403):
 		return errors.New("Access denied!")
+	case r.StatusCode == int(500):
+		response, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			return err
+		}
+
+		return errors.New(string(response))
+
 	case r.StatusCode != int(200):
 		log.Debugf("DELETE Status '%s' status code %d \n", r.Status, r.StatusCode)
 		return errors.New(r.Status)
@@ -110,6 +126,14 @@ func httpPost(url string, jdata interface{}) error {
 		return errors.New("Page not found!")
 	case r.StatusCode == int(403):
 		return errors.New("Access denied!")
+	case r.StatusCode == int(500):
+		response, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			return err
+		}
+
+		return errors.New(string(response))
+
 	case r.StatusCode != int(200):
 		log.Debugf("POST Status '%s' status code %d \n", r.Status, r.StatusCode)
 		return errors.New(r.Status)
@@ -148,7 +172,7 @@ func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) e
 	// http post the object
 	err := httpPost(url, obj)
 	if err != nil {
-		log.Errorf("Error creating {{ .Name }} %+v. Err: %v", obj, err)
+		log.Debugf("Error creating {{ .Name }} %+v. Err: %v", obj, err)
 		return err
 	}
 
@@ -164,7 +188,7 @@ func (c *ContivClient) {{ initialCap .Name }}List() (*[]*{{ initialCap .Name }},
 	var objList []*{{ initialCap .Name }}
 	err := httpGet(url, &objList)
 	if err != nil {
-		log.Errorf("Error getting {{ .Name }}s. Err: %v", err)
+		log.Debugf("Error getting {{ .Name }}s. Err: %v", err)
 		return nil, err
 	}
 
@@ -181,7 +205,7 @@ func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Ke
 	var obj {{ initialCap .Name }}
 	err := httpGet(url, &obj)
 	if err != nil {
-		log.Errorf("Error getting {{ .Name }} %+v. Err: %v", keyStr, err)
+		log.Debugf("Error getting {{ .Name }} %+v. Err: %v", keyStr, err)
 		return nil, err
 	}
 
@@ -197,7 +221,7 @@ func (c *ContivClient) {{ initialCap .Name }}Delete({{range $index, $element := 
 	// http get the object
 	err := httpDelete(url)
 	if err != nil {
-		log.Errorf("Error deleting {{ .Name }} %s. Err: %v", keyStr, err)
+		log.Debugf("Error deleting {{ .Name }} %s. Err: %v", keyStr, err)
 		return err
 	}
 
