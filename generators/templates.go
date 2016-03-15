@@ -611,6 +611,8 @@ func Create{{ initialCap .Name }}(obj *{{ initialCap .Name }}) error {
 		return errors.New("Invalid object type")
 	}
 
+	saveObj := obj
+
 	// Check if object already exists
 	if collections.{{ .Name }}s[obj.Key] != nil {
 		// Perform Update callback
@@ -619,6 +621,9 @@ func Create{{ initialCap .Name }}(obj *{{ initialCap .Name }}) error {
 			log.Errorf("{{ initialCap .Name }}Update retruned error for: %+v. Err: %v", obj, err)
 			return err
 		}
+
+		// save the original object after update
+		saveObj = collections.{{ .Name }}s[obj.Key]
 	} else {
 		// save it in cache
 		collections.{{ .Name }}s[obj.Key] = obj
@@ -633,9 +638,9 @@ func Create{{ initialCap .Name }}(obj *{{ initialCap .Name }}) error {
 	}
 
 	// Write it to modeldb
-	err = obj.Write()
+	err = saveObj.Write()
 	if err != nil {
-		log.Errorf("Error saving {{ .Name }} %s to db. Err: %v", obj.Key, err)
+		log.Errorf("Error saving {{ .Name }} %s to db. Err: %v", saveObj.Key, err)
 		return err
 	}
 
