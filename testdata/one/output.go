@@ -243,6 +243,8 @@ func CreateTenant(obj *Tenant) error {
 		return errors.New("Invalid object type")
 	}
 
+	saveObj := obj
+
 	// Check if object already exists
 	if collections.tenants[obj.Key] != nil {
 		// Perform Update callback
@@ -251,6 +253,9 @@ func CreateTenant(obj *Tenant) error {
 			log.Errorf("TenantUpdate retruned error for: %+v. Err: %v", obj, err)
 			return err
 		}
+
+		// save the original object after update
+		saveObj = collections.tenants[obj.Key]
 	} else {
 		// save it in cache
 		collections.tenants[obj.Key] = obj
@@ -265,9 +270,9 @@ func CreateTenant(obj *Tenant) error {
 	}
 
 	// Write it to modeldb
-	err = obj.Write()
+	err = saveObj.Write()
 	if err != nil {
-		log.Errorf("Error saving tenant %s to db. Err: %v", obj.Key, err)
+		log.Errorf("Error saving tenant %s to db. Err: %v", saveObj.Key, err)
 		return err
 	}
 
@@ -477,6 +482,8 @@ func CreateNetwork(obj *Network) error {
 		return errors.New("Invalid object type")
 	}
 
+	saveObj := obj
+
 	// Check if object already exists
 	if collections.networks[obj.Key] != nil {
 		// Perform Update callback
@@ -485,6 +492,9 @@ func CreateNetwork(obj *Network) error {
 			log.Errorf("NetworkUpdate retruned error for: %+v. Err: %v", obj, err)
 			return err
 		}
+
+		// save the original object after update
+		saveObj = collections.networks[obj.Key]
 	} else {
 		// save it in cache
 		collections.networks[obj.Key] = obj
@@ -499,9 +509,9 @@ func CreateNetwork(obj *Network) error {
 	}
 
 	// Write it to modeldb
-	err = obj.Write()
+	err = saveObj.Write()
 	if err != nil {
-		log.Errorf("Error saving network %s to db. Err: %v", obj.Key, err)
+		log.Errorf("Error saving network %s to db. Err: %v", saveObj.Key, err)
 		return err
 	}
 
