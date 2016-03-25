@@ -1,6 +1,6 @@
 	# Create {{ .Name }}
 	def create{{ initialCap .Name }}(self, obj):
-	    postUrl = self.baseUrl + '/api/{{ initialCap .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
+	    postUrl = self.baseUrl + '/api/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
 
 	    jdata = json.dumps({ {{range $index, $element := .Properties}}
 			"{{ .Name}}": obj.{{.Name}}, {{end}}
