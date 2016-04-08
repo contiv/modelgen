@@ -31,10 +31,14 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/contiv/objdb/modeldb"
-
 	log "github.com/Sirupsen/logrus"
 )
+
+// Link is a one way relattion between two objects
+type Link struct {
+	ObjType string ` + "`" + `json:"type,omitempty"` + "`" + `
+	ObjKey  string ` + "`" + `json:"key,omitempty"` + "`" + `
+}
 
 func httpGet(url string, jdata interface{}) error {
 
@@ -227,6 +231,34 @@ func (c *ContivClient) {{ initialCap .Name }}Delete({{range $index, $element := 
 
 	return nil
 }
+  `,
+	"clientstruct": `
+type {{ initialCap .Name }} struct {
+	// every object has a key
+	Key		string		` + "`" + `json:"key,omitempty"` + "`" + `
+
+  {{ range .Properties }} {{ .GenerateGoStructs }} {{ end }}
+
+  {{ if .LinkSets | len }}
+  // add link-sets and links
+	LinkSets	{{ initialCap .Name }}LinkSets		` + "`" + `json:"link-sets,omitempty"` + "`" + `
+  {{ end }} {{ if .Links | len }} Links	{{ initialCap .Name }}Links		` + "`" + `json:"links,omitempty"` + "`" + `
+  {{ end }}
+}
+
+{{ if .LinkSets | len }}
+type {{ initialCap .Name }}LinkSets struct {
+  {{ range .LinkSets }} {{ initialCap .Name }}	map[string]Link		` + "`" + `json:"{{ .Name }},omitempty"` + "`" + `
+  {{end}}
+}
+{{ end }}
+
+{{ if .Links | len }}
+type {{ initialCap .Name }}Links struct {
+  {{ range .Links }} {{ initialCap .Name }} Link	` + "`" + `json:"{{ .Name }},omitempty"` + "`" + `
+  {{ end }}
+}
+{{ end }}
   `,
 	"gostructs": `
 type Collections struct {
@@ -432,7 +464,7 @@ class objmodelClient:
 	"pyclientObj": `
 	# Create {{ .Name }}
 	def create{{ initialCap .Name }}(self, obj):
-	    postUrl = self.baseUrl + '/api/{{ initialCap .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
+	    postUrl = self.baseUrl + '/api/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
 
 	    jdata = json.dumps({ {{range $index, $element := .Properties}}
 			"{{ .Name}}": obj.{{.Name}}, {{end}}
