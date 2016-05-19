@@ -315,7 +315,7 @@ func Validate{{initialCap .Name}}(obj *{{initialCap .Name}}) error {
 	}
 {{end}} {{else if eq $element.Type "string"}} {{if ne $element.Default ""}}
 	if obj.{{initialCap $element.Name}} == "" {
-		obj.{{initialCap $element.Name}} = {{$element.Default}}
+		obj.{{initialCap $element.Name}} = "{{$element.Default}}"
 	}
 {{end}} {{if ne $element.Length 0}}
 	if len(obj.{{initialCap $element.Name}}) > {{$element.Length}} {
