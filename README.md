@@ -115,7 +115,8 @@ Object refers to an a type of REST object.
   - `name`: refers to name of the object type. example `network` or `tenant`.
   - `type`: refers to type of object. only supported type is `object`.
   - `key`: is an ordered list of attribute names that make up the key for an object. E.g. Key for a network object is `tenantName` and `networkName`.
-  - `properties`: is the list of fields within the REST object.
+  - `cfgProperties`: is the list of configuration fields within the REST object.
+  - `operProperties`: is the list of operational fields within the REST object; only meant for `get`.
 
 ### Properties
 Property refers to a field in a REST object.

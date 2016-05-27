@@ -120,7 +120,6 @@ func (prop *Property) GenerateGoStructs() (string, error) {
 	if !found {
 		return "", errors.New("Unknown Property")
 	}
-
 	byt, err := generators.RunTemplate("propstruct", prop)
 	return string(byt), err
 }
