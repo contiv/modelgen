@@ -31,8 +31,8 @@ type Object struct {
 	OperProperties 	map[string]*Property `json:"operProperties,omitempty"`
 	LinkSets   	map[string]*LinkSet  `json:"link-sets,omitempty"`
 	Links      	map[string]*Link     `json:"links,omitempty"`
-	OperLinkSets   	map[string]*LinkSet  `json:"link-sets,omitempty"`
-	OperLinks      	map[string]*Link     `json:"links,omitempty"`
+	OperLinkSets   	map[string]*LinkSet  `json:"oper-link-sets,omitempty"`
+	OperLinks      	map[string]*Link     `json:"oper-links,omitempty"`
 }
 
 // Property represents a property of an object
