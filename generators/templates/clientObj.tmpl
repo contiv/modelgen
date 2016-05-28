@@ -47,7 +47,7 @@ func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Ke
 	return &obj, nil
 }
 
-// {{ initialCap .Name }}GetInspect gets the {{ .Name }}Inspect object
+// {{ initialCap .Name }}Inspect gets the {{ .Name }}Inspect object
 func (c *ContivClient) {{ initialCap .Name }}Inspect({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}Inspect, error) {
 	// build key and URL
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}

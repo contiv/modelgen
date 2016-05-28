@@ -219,7 +219,7 @@ func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Ke
 	return &obj, nil
 }
 
-// {{ initialCap .Name }}GetInspect gets the {{ .Name }}Inspect object
+// {{ initialCap .Name }}Inspect gets the {{ .Name }}Inspect object
 func (c *ContivClient) {{ initialCap .Name }}Inspect({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}Inspect, error) {
 	// build key and URL
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
@@ -529,7 +529,7 @@ class objmodelClient:
 	"pyclientObj": `
 	# Create {{ .Name }}
 	def create{{ initialCap .Name }}(self, obj):
-	    postUrl = self.baseUrl + '/api/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
+	    postUrl = self.baseUrl + '/api/{{ .Version }}/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
 
 	    jdata = json.dumps({ {{range $index, $element := .CfgProperties}}
 			"{{ .Name}}": obj.{{.Name}}, {{end}}
@@ -544,7 +544,7 @@ class objmodelClient:
 	# Delete {{ .Name }}
 	def delete{{ initialCap .Name }}(self, {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}}, {{ .}}{{end}}{{end}}):
 	    # Delete {{ initialCap .Name }}
-	    deleteUrl = self.baseUrl + '/api/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} {{else}}+ ":" + {{ .}} {{end}}{{end}} + '/'
+	    deleteUrl = self.baseUrl + '/api/{{ .Version }}/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} {{else}}+ ":" + {{ .}} {{end}}{{end}} + '/'
 	    response = httpDelete(deleteUrl)
 
 	    if response == "Error":
@@ -553,7 +553,7 @@ class objmodelClient:
 	# List all {{ .Name }} objects
 	def list{{ initialCap .Name }}(self):
 	    # Get a list of {{ .Name }} objects
-	    retDate = urllib2.urlopen(self.baseUrl + '/api/{{ .Name }}s/')
+	    retDate = urllib2.urlopen(self.baseUrl + '/api/{{ .Version }}/{{ .Name }}s/')
 	    if retData == "Error":
 	        errorExit("list {{ initialCap .Name }} failed")
 
@@ -604,22 +604,20 @@ func writeJSON(w http.ResponseWriter, code int, v interface{}) error {
 
 // Add all routes for REST handlers
 func AddRoutes(router *mux.Router) {
-	var route, listRoute string
+	var route, listRoute, inspectRoute string
 
   {{ range .Objects }}
 	// Register {{.Name}}
 	route = "/api/{{.Version}}/{{.Name}}s/{key}/"
 	listRoute = "/api/{{.Version}}/{{.Name}}s/"
+	inspectRoute = "/api/{{.Version}}/inspect/{{.Name}}s/{key}/"
 	log.Infof("Registering %s", route)
 	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpList{{initialCap .Name}}s))
 	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGet{{initialCap .Name}}))
 	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreate{{initialCap .Name}}))
 	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreate{{initialCap .Name}}))
 	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDelete{{initialCap .Name}}))
-	{{ if .OperProperties | len }}
-	inspectRoute := "/api/{{.Version}}/inspect/{{.Name}}s/{key}/"
-	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpGetOper{{initialCap .Name}}))
-	{{ end }}
+	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspect{{initialCap .Name}}))
 
   {{ end }}
 }
@@ -679,7 +677,6 @@ func httpInspect{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, v
 	return &obj, nil
 }
 
-{{ if .OperProperties | len }}
 // Get a {{ .Name }}Oper object
 func GetOper{{ initialCap .Name }}(key string) error {
 	obj := collections.{{ .Name }}s[key]
@@ -688,6 +685,7 @@ func GetOper{{ initialCap .Name }}(key string) error {
 		return errors.New("{{ .Name }} not found")
 	}
 
+{{ if .OperProperties | len }}
 	// Check if we handle this object
 	if objCallbackHandler.{{ initialCap .Name }}Cb == nil {
 		log.Errorf("No callback registered for {{ .Name }} object")
@@ -700,10 +698,10 @@ func GetOper{{ initialCap .Name }}(key string) error {
 		log.Errorf("{{ initialCap .Name }}Delete retruned error for: %+v. Err: %v", obj, err)
 		return err
 	}
+{{ end }}
 
 	return nil
 }
-{{ end }}
 
 // CREATE REST call
 func httpCreate{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
