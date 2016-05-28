@@ -5,7 +5,7 @@ var templates = map[string]string{
 {{ range .Objects }}
 type {{ initialCap .Name }}Callbacks interface {
 {{ if .OperProperties | len }}
-  {{ initialCap .Name }}GetOper({{ .Name }} *{{ initialCap .Name }}Oper) error
+  {{ initialCap .Name }}GetOper({{ .Name }} *{{ initialCap .Name }}Inspect) error
 {{ end }}
   {{ initialCap .Name }}Create({{ .Name }} *{{ initialCap .Name }}) error
   {{ initialCap .Name }}Update({{ .Name }}, params *{{ initialCap .Name }}) error
@@ -282,9 +282,6 @@ type {{ initialCap .Name }}Links struct {
 
 {{ if .OperProperties | len }}
 type {{ initialCap .Name }}Oper struct {
-	// every object has a key
-	Key		string		` + "`" + `json:"key,omitempty"` + "`" + `
-
   {{ range .OperProperties }} {{ .GenerateGoStructs }} {{ end }}
 
   {{ if .OperLinkSets | len }}
@@ -428,9 +425,6 @@ type {{ initialCap .Name }}Links struct {
 
 {{ if .OperProperties | len }}
 type {{ initialCap .Name }}Oper struct {
-	// every object has a key
-	Key		string		` + "`" + `json:"key,omitempty"` + "`" + `
-
   {{ range .OperProperties }} {{ .GenerateGoStructs }} {{ end }}
 
   {{ if .OperLinkSets | len }}
@@ -677,15 +671,9 @@ func httpInspect{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, v
 	return &obj, nil
 }
 
-// Get a {{ .Name }}Oper object
-func GetOper{{ initialCap .Name }}(key string) error {
-	obj := collections.{{ .Name }}s[key]
-	if obj == nil {
-		log.Errorf("{{ .Name }} %s not found", key)
-		return errors.New("{{ .Name }} not found")
-	}
-
 {{ if .OperProperties | len }}
+// Get a {{ .Name }}Oper object
+func GetOper{{ initialCap .Name }}(obj *{{ initialCap .Name }}Inspect) error {
 	// Check if we handle this object
 	if objCallbackHandler.{{ initialCap .Name }}Cb == nil {
 		log.Errorf("No callback registered for {{ .Name }} object")
@@ -698,10 +686,10 @@ func GetOper{{ initialCap .Name }}(key string) error {
 		log.Errorf("{{ initialCap .Name }}Delete retruned error for: %+v. Err: %v", obj, err)
 		return err
 	}
-{{ end }}
 
 	return nil
 }
+{{ end }}
 
 // CREATE REST call
 func httpCreate{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {

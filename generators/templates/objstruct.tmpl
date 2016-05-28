@@ -27,9 +27,6 @@ type {{ initialCap .Name }}Links struct {
 
 {{ if .OperProperties | len }}
 type {{ initialCap .Name }}Oper struct {
-	// every object has a key
-	Key		string		`json:"key,omitempty"`
-
   {{ range .OperProperties }} {{ .GenerateGoStructs }} {{ end }}
 
   {{ if .OperLinkSets | len }}

@@ -1,7 +1,7 @@
 {{ range .Objects }}
 type {{ initialCap .Name }}Callbacks interface {
 {{ if .OperProperties | len }}
-  {{ initialCap .Name }}GetOper({{ .Name }} *{{ initialCap .Name }}Oper) error
+  {{ initialCap .Name }}GetOper({{ .Name }} *{{ initialCap .Name }}Inspect) error
 {{ end }}
   {{ initialCap .Name }}Create({{ .Name }} *{{ initialCap .Name }}) error
   {{ initialCap .Name }}Update({{ .Name }}, params *{{ initialCap .Name }}) error
