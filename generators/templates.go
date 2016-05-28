@@ -286,7 +286,7 @@ type {{ initialCap .Name }}Oper struct {
   {{ if .OperLinkSets | len }}
 	// add link-sets and links
 	LinkSets	{{ initialCap .Name }}LinkSets		` + "`" + `json:"link-sets,omitempty"` + "`" + `
-  {{ end }} {{ if .Links | len }} OperLinks	{{ initialCap .Name }}Links		` + "`" + `json:"links,omitempty"` + "`" + `
+  {{ end }} {{ if .OperLinks | len }} OperLinks	{{ initialCap .Name }}Links		` + "`" + `json:"links,omitempty"` + "`" + `
   {{ end }}
 }
 {{ end }}
@@ -429,8 +429,7 @@ type {{ initialCap .Name }}Oper struct {
   {{ if .OperLinkSets | len }}
 	// add link-sets and links
 	LinkSets	{{ initialCap .Name }}LinkSets		` + "`" + `json:"link-sets,omitempty"` + "`" + `
-  {{ end }} {{ if .OperLinks | len }} OperLinks	{{ initialCap .Name }}Links		` + "`" + `json:"links,omitempty"` + "`" + `
-  {{ end }}
+  {{ end }} {{ if .OperLinks | len }} OperLinks	{{ initialCap .Name }}Links		` + "`" + `json:"links,omitempty"` + "`" + ` {{ end }}
 }
 {{ end }}
 

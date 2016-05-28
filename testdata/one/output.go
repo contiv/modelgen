@@ -21,6 +21,12 @@ type Tenant struct {
 
 	TenantName string `json:"tenantName,omitempty"` //
 
+	// add link-sets and links
+	LinkSets TenantLinkSets `json:"link-sets,omitempty"`
+}
+
+type TenantLinkSets struct {
+	Networks map[string]modeldb.Link `json:"Networks,omitempty"`
 }
 
 type TenantInspect struct {
@@ -40,6 +46,11 @@ type Network struct {
 	Subnet      string   `json:"subnet,omitempty"`     //
 	TenantName  string   `json:"tenantName,omitempty"` //
 
+	Links NetworkLinks `json:"links,omitempty"`
+}
+
+type NetworkLinks struct {
+	Tenant modeldb.Link `json:"Tenant,omitempty"`
 }
 
 type NetworkInspect struct {
@@ -59,12 +70,14 @@ type NetTwo struct {
 	Subnet      string   `json:"subnet,omitempty"`     //
 	TenantName  string   `json:"tenantName,omitempty"` //
 
+	Links NetTwoLinks `json:"links,omitempty"`
+}
+
+type NetTwoLinks struct {
+	Tenant modeldb.Link `json:"Tenant,omitempty"`
 }
 
 type NetTwoOper struct {
-	// every object has a key
-	Key string `json:"key,omitempty"`
-
 	CreateTime  string `json:"createTime,omitempty"`  //
 	NetworkName string `json:"networkName,omitempty"` //
 	TenantName  string `json:"tenantName,omitempty"`  //
@@ -97,8 +110,7 @@ type NetworkCallbacks interface {
 }
 
 type NetTwoCallbacks interface {
-	NetTwoGetOper(netTwo *NetTwoOper) error
-
+	NetTwoGetOper(netTwo *NetTwoInspect) error
 	NetTwoCreate(netTwo *NetTwo) error
 	NetTwoUpdate(netTwo, params *NetTwo) error
 	NetTwoDelete(netTwo *NetTwo) error
@@ -172,40 +184,43 @@ func writeJSON(w http.ResponseWriter, code int, v interface{}) error {
 
 // Add all routes for REST handlers
 func AddRoutes(router *mux.Router) {
-	var route, listRoute string
+	var route, listRoute, inspectRoute string
 
 	// Register tenant
 	route = "/api/v1/tenants/{key}/"
 	listRoute = "/api/v1/tenants/"
+	inspectRoute = "/api/v1/inspect/tenants/{key}/"
 	log.Infof("Registering %s", route)
 	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpListTenants))
 	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGetTenant))
 	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreateTenant))
 	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreateTenant))
 	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDeleteTenant))
+	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectTenant))
 
 	// Register network
 	route = "/api/v1/networks/{key}/"
 	listRoute = "/api/v1/networks/"
+	inspectRoute = "/api/v1/inspect/networks/{key}/"
 	log.Infof("Registering %s", route)
 	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpListNetworks))
 	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGetNetwork))
 	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreateNetwork))
 	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreateNetwork))
 	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDeleteNetwork))
+	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectNetwork))
 
 	// Register netTwo
 	route = "/api/v1/netTwos/{key}/"
 	listRoute = "/api/v1/netTwos/"
+	inspectRoute = "/api/v1/inspect/netTwos/{key}/"
 	log.Infof("Registering %s", route)
 	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpListNetTwos))
 	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGetNetTwo))
 	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreateNetTwo))
 	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreateNetTwo))
 	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDeleteNetTwo))
-
-	inspectRoute := "/api/v1/inspect/netTwos/{key}/"
-	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpGetOperNetTwo))
+	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectNetTwo))
 
 }
 
@@ -805,13 +820,7 @@ func httpInspectNetTwo(w http.ResponseWriter, r *http.Request, vars map[string]s
 }
 
 // Get a netTwoOper object
-func GetOperNetTwo(key string) error {
-	obj := collections.netTwos[key]
-	if obj == nil {
-		log.Errorf("netTwo %s not found", key)
-		return errors.New("netTwo not found")
-	}
-
+func GetOperNetTwo(obj *NetTwoInspect) error {
 	// Check if we handle this object
 	if objCallbackHandler.NetTwoCb == nil {
 		log.Errorf("No callback registered for netTwo object")
