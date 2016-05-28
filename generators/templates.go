@@ -5,8 +5,7 @@ var templates = map[string]string{
 {{ range .Objects }}
 type {{ initialCap .Name }}Callbacks interface {
 {{ if .OperProperties | len }}
-  {{ initialCap .Name }}GetOper({{ .Name }} *{{ initialCap .Name }}Inspect) error
-{{ end }}
+  {{ initialCap .Name }}GetOper({{ .Name }} *{{ initialCap .Name }}Inspect) error {{ end }}
   {{ initialCap .Name }}Create({{ .Name }} *{{ initialCap .Name }}) error
   {{ initialCap .Name }}Update({{ .Name }}, params *{{ initialCap .Name }}) error
   {{ initialCap .Name }}Delete({{ .Name }} *{{ initialCap .Name }}) error
@@ -430,7 +429,7 @@ type {{ initialCap .Name }}Oper struct {
   {{ if .OperLinkSets | len }}
 	// add link-sets and links
 	LinkSets	{{ initialCap .Name }}LinkSets		` + "`" + `json:"link-sets,omitempty"` + "`" + `
-  {{ end }} {{ if .Links | len }} OperLinks	{{ initialCap .Name }}Links		` + "`" + `json:"links,omitempty"` + "`" + `
+  {{ end }} {{ if .OperLinks | len }} OperLinks	{{ initialCap .Name }}Links		` + "`" + `json:"links,omitempty"` + "`" + `
   {{ end }}
 }
 {{ end }}
