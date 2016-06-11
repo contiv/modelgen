@@ -2,7 +2,7 @@
 func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) error {
 	// build key and URL
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{initialCap .}}{{else}} + ":" + obj.{{initialCap .}}{{end}}{{end}}
-	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
+	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
 
 	// http post the object
 	err := httpPost(url, obj)
@@ -17,7 +17,7 @@ func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) e
 // {{ initialCap .Name }}List lists all {{ .Name }} objects
 func (c *ContivClient) {{ initialCap .Name }}List() (*[]*{{ initialCap .Name }}, error) {
 	// build key and URL
-	url := c.baseURL + "/api/{{ .Name }}s/"
+	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/"
 
 	// http get the object
 	var objList []*{{ initialCap .Name }}
@@ -34,10 +34,27 @@ func (c *ContivClient) {{ initialCap .Name }}List() (*[]*{{ initialCap .Name }},
 func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}, error) {
 	// build key and URL
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
-	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
+	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
 
 	// http get the object
 	var obj {{ initialCap .Name }}
+	err := httpGet(url, &obj)
+	if err != nil {
+		log.Debugf("Error getting {{ .Name }} %+v. Err: %v", keyStr, err)
+		return nil, err
+	}
+
+	return &obj, nil
+}
+
+// {{ initialCap .Name }}Inspect gets the {{ .Name }}Inspect object
+func (c *ContivClient) {{ initialCap .Name }}Inspect({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}Inspect, error) {
+	// build key and URL
+	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
+	url := c.baseURL + "/api/{{.Version}}/inspect/{{ .Name }}s/" + keyStr + "/"
+
+	// http get the object
+	var obj {{ initialCap .Name }}Inspect
 	err := httpGet(url, &obj)
 	if err != nil {
 		log.Debugf("Error getting {{ .Name }} %+v. Err: %v", keyStr, err)
@@ -51,7 +68,7 @@ func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Ke
 func (c *ContivClient) {{ initialCap .Name }}Delete({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) error {
 	// build key and URL
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
-	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
+	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
 
 	// http get the object
 	err := httpDelete(url)

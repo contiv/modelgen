@@ -3,9 +3,10 @@
 	"objects": [
 		{
 			"name": "tenant",
+			"version": "v1",
 			"type": "object",
 			"key": ["tenantName"],
-			"properties": {
+			"cfgProperties": {
 				"tenantName": {
 					"type": "string",
 					"description": "Tenant Name"
@@ -19,13 +20,14 @@
 		},
 		{
 			"name": "network",
+			"version": "v1",
 			"type": "object",
 			"key": ["tenantName", "networkName" ],
-			"properties": {
-        "policies": {
-          "type": "array",
-          "items": "string"
-        },
+			"cfgProperties": {
+				"policies": {
+			  		"type": "array",
+			  		"items": "string"
+					},
 				"networkName": {
 					"type": "string"
 				},
@@ -62,6 +64,66 @@
 			"links": {
 				"tenant": {
 					"ref": "tenant"
+				}
+			}
+		},
+		{
+			"name": "netTwo",
+			"version": "v1",
+			"type": "object",
+			"key": ["tenantName", "networkName" ],
+			"cfgProperties": {
+				"policies": {
+			  		"type": "array",
+			  		"items": "string"
+					},
+				"networkName": {
+					"type": "string"
+				},
+				"tenantName": {
+					"type": "string"
+				},
+				"isPublic": {
+					"type": "bool",
+					"default": "false"
+				},
+				"isPrivate": {
+					"type": "bool",
+					"default": "true"
+				},
+				"encap": {
+					"type": "string",
+					"length": 32
+				},
+				"pktTag": {
+					"type": "int",
+					"min": 1,
+					"max": 4094,
+					"default": "1"
+				},
+				"subnet": {
+					"type": "string",
+					"format": "^([0-9]{1,3}?.[0-9]{1,3}?.[0-9]{1,3}?.[0-9]{1,3}?/[0-9]{1,2}?)$"
+				},
+				"labels": {
+					"type": "array",
+					"items": "string"
+				}
+			},
+			"links": {
+				"tenant": {
+					"ref": "tenant"
+				}
+			},
+			"operProperties": {
+				"networkName": {
+					"type": "string"
+				},
+				"tenantName": {
+					"type": "string"
+				},
+				"createTime": {
+					"type": "string"
 				}
 			}
 		}

@@ -4,6 +4,8 @@ var templates = map[string]string{
 	"callbacks": `
 {{ range .Objects }}
 type {{ initialCap .Name }}Callbacks interface {
+{{ if .OperProperties | len }}
+  {{ initialCap .Name }}GetOper({{ .Name }} *{{ initialCap .Name }}Inspect) error {{ end }}
   {{ initialCap .Name }}Create({{ .Name }} *{{ initialCap .Name }}) error
   {{ initialCap .Name }}Update({{ .Name }}, params *{{ initialCap .Name }}) error
   {{ initialCap .Name }}Delete({{ .Name }} *{{ initialCap .Name }}) error
@@ -171,7 +173,7 @@ func NewContivClient(baseURL string) (*ContivClient, error) {
 func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) error {
 	// build key and URL
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{initialCap .}}{{else}} + ":" + obj.{{initialCap .}}{{end}}{{end}}
-	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
+	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
 
 	// http post the object
 	err := httpPost(url, obj)
@@ -186,7 +188,7 @@ func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) e
 // {{ initialCap .Name }}List lists all {{ .Name }} objects
 func (c *ContivClient) {{ initialCap .Name }}List() (*[]*{{ initialCap .Name }}, error) {
 	// build key and URL
-	url := c.baseURL + "/api/{{ .Name }}s/"
+	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/"
 
 	// http get the object
 	var objList []*{{ initialCap .Name }}
@@ -203,10 +205,27 @@ func (c *ContivClient) {{ initialCap .Name }}List() (*[]*{{ initialCap .Name }},
 func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}, error) {
 	// build key and URL
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
-	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
+	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
 
 	// http get the object
 	var obj {{ initialCap .Name }}
+	err := httpGet(url, &obj)
+	if err != nil {
+		log.Debugf("Error getting {{ .Name }} %+v. Err: %v", keyStr, err)
+		return nil, err
+	}
+
+	return &obj, nil
+}
+
+// {{ initialCap .Name }}Inspect gets the {{ .Name }}Inspect object
+func (c *ContivClient) {{ initialCap .Name }}Inspect({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}Inspect, error) {
+	// build key and URL
+	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
+	url := c.baseURL + "/api/{{.Version}}/inspect/{{ .Name }}s/" + keyStr + "/"
+
+	// http get the object
+	var obj {{ initialCap .Name }}Inspect
 	err := httpGet(url, &obj)
 	if err != nil {
 		log.Debugf("Error getting {{ .Name }} %+v. Err: %v", keyStr, err)
@@ -220,7 +239,7 @@ func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Ke
 func (c *ContivClient) {{ initialCap .Name }}Delete({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) error {
 	// build key and URL
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
-	url := c.baseURL + "/api/{{ .Name }}s/" + keyStr + "/"
+	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
 
 	// http get the object
 	err := httpDelete(url)
@@ -237,7 +256,7 @@ type {{ initialCap .Name }} struct {
 	// every object has a key
 	Key		string		` + "`" + `json:"key,omitempty"` + "`" + `
 
-  {{ range .Properties }} {{ .GenerateGoStructs }} {{ end }}
+  {{ range .CfgProperties }} {{ .GenerateGoStructs }} {{ end }}
 
   {{ if .LinkSets | len }}
   // add link-sets and links
@@ -259,6 +278,26 @@ type {{ initialCap .Name }}Links struct {
   {{ end }}
 }
 {{ end }}
+
+{{ if .OperProperties | len }}
+type {{ initialCap .Name }}Oper struct {
+  {{ range .OperProperties }} {{ .GenerateGoStructs }} {{ end }}
+
+  {{ if .OperLinkSets | len }}
+	// add link-sets and links
+	LinkSets	{{ initialCap .Name }}LinkSets		` + "`" + `json:"link-sets,omitempty"` + "`" + `
+  {{ end }} {{ if .OperLinks | len }} OperLinks	{{ initialCap .Name }}Links		` + "`" + `json:"links,omitempty"` + "`" + `
+  {{ end }}
+}
+{{ end }}
+
+type {{ initialCap .Name }}Inspect struct {
+	Config		{{ initialCap .Name }}
+	{{ if .OperProperties }}
+	Oper		{{ initialCap .Name }}Oper
+	{{ end }}
+}
+
   `,
 	"gostructs": `
 type Collections struct {
@@ -306,7 +345,7 @@ var {{ initialCap .Name }}SummaryView = React.createClass({
 				<ModalTrigger modal={<{{ initialCap .Name }}ModalView {{ .Name }}={ {{ .Name }} }/>}>
 					<tr key={ {{ .Name }}.key } className="info">
 						{{ $objName := .Name }}
-						{{range $element := .Properties }} {{if eq $element.ShowSummary true}}
+						{{range $element := .CfgProperties }} {{if eq $element.ShowSummary true}}
 						<td>{ {{ $objName }}.{{ $element.Name }} }</td>
 						{{end}}{{end}}
 					</tr>
@@ -320,7 +359,7 @@ var {{ initialCap .Name }}SummaryView = React.createClass({
 				<thead>
 					<tr>
 					{{ $objName := .Name }}
-					{{range $element := .Properties }} {{if eq $element.ShowSummary true}}
+					{{range $element := .CfgProperties }} {{if eq $element.ShowSummary true}}
 						<th> {{ $element.Title }} </th> {{end}}{{end}}
 					</tr>
 				</thead>
@@ -340,7 +379,7 @@ var {{ initialCap .Name }}ModalView = React.createClass({
 	      <Modal {...this.props} bsStyle='primary' bsSize='large' title='{{ initialCap .Name }}' animation={false}>
 	        <div className='modal-body' style={ {margin: '5%',} }>
 			{{ $objName := .Name }}
-			{{range $element := .Properties }}
+			{{range $element := .CfgProperties }}
 				<Input type='text' label='{{ $element.Title }}' ref='{{ $element.Name }}' defaultValue={obj.{{$element.Name}}} placeholder='{{ $element.Title }}' />
 			{{end}}
 			</div>
@@ -360,10 +399,10 @@ type {{ initialCap .Name }} struct {
 	// every object has a key
 	Key		string		` + "`" + `json:"key,omitempty"` + "`" + `
 
-  {{ range .Properties }} {{ .GenerateGoStructs }} {{ end }}
+  {{ range .CfgProperties }} {{ .GenerateGoStructs }} {{ end }}
 
   {{ if .LinkSets | len }}
-  // add link-sets and links
+	// add link-sets and links
 	LinkSets	{{ initialCap .Name }}LinkSets		` + "`" + `json:"link-sets,omitempty"` + "`" + `
   {{ end }} {{ if .Links | len }} Links	{{ initialCap .Name }}Links		` + "`" + `json:"links,omitempty"` + "`" + `
   {{ end }}
@@ -382,6 +421,24 @@ type {{ initialCap .Name }}Links struct {
   {{ end }}
 }
 {{ end }}
+
+{{ if .OperProperties | len }}
+type {{ initialCap .Name }}Oper struct {
+  {{ range .OperProperties }} {{ .GenerateGoStructs }} {{ end }}
+
+  {{ if .OperLinkSets | len }}
+	// add link-sets and links
+	LinkSets	{{ initialCap .Name }}LinkSets		` + "`" + `json:"link-sets,omitempty"` + "`" + `
+  {{ end }} {{ if .OperLinks | len }} OperLinks	{{ initialCap .Name }}Links		` + "`" + `json:"links,omitempty"` + "`" + ` {{ end }}
+}
+{{ end }}
+
+type {{ initialCap .Name }}Inspect struct {
+	Config		{{ initialCap .Name }}
+	{{ if .OperProperties }}
+	Oper		{{ initialCap .Name }}Oper
+	{{ end }}
+}
   `,
 	"propstruct": `
 {{ initialCap .Name }}{{ if eq .Type "array" }} []{{ translateType .Items }} ` + "`" + `json:"{{ .Name }},omitempty"` + "`" + ` {{ else }} {{ translateType .Type }} ` + "`" + `json:"{{ .Name }},omitempty"` + "`" + ` // {{.Title}} {{ end }}
@@ -464,9 +521,9 @@ class objmodelClient:
 	"pyclientObj": `
 	# Create {{ .Name }}
 	def create{{ initialCap .Name }}(self, obj):
-	    postUrl = self.baseUrl + '/api/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
+	    postUrl = self.baseUrl + '/api/{{ .Version }}/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
 
-	    jdata = json.dumps({ {{range $index, $element := .Properties}}
+	    jdata = json.dumps({ {{range $index, $element := .CfgProperties}}
 			"{{ .Name}}": obj.{{.Name}}, {{end}}
 	    })
 
@@ -479,7 +536,7 @@ class objmodelClient:
 	# Delete {{ .Name }}
 	def delete{{ initialCap .Name }}(self, {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}}, {{ .}}{{end}}{{end}}):
 	    # Delete {{ initialCap .Name }}
-	    deleteUrl = self.baseUrl + '/api/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} {{else}}+ ":" + {{ .}} {{end}}{{end}} + '/'
+	    deleteUrl = self.baseUrl + '/api/{{ .Version }}/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} {{else}}+ ":" + {{ .}} {{end}}{{end}} + '/'
 	    response = httpDelete(deleteUrl)
 
 	    if response == "Error":
@@ -488,7 +545,7 @@ class objmodelClient:
 	# List all {{ .Name }} objects
 	def list{{ initialCap .Name }}(self):
 	    # Get a list of {{ .Name }} objects
-	    retDate = urllib2.urlopen(self.baseUrl + '/api/{{ .Name }}s/')
+	    retDate = urllib2.urlopen(self.baseUrl + '/api/{{ .Version }}/{{ .Name }}s/')
 	    if retData == "Error":
 	        errorExit("list {{ initialCap .Name }} failed")
 
@@ -539,17 +596,21 @@ func writeJSON(w http.ResponseWriter, code int, v interface{}) error {
 
 // Add all routes for REST handlers
 func AddRoutes(router *mux.Router) {
-	var route, listRoute string
+	var route, listRoute, inspectRoute string
+
   {{ range .Objects }}
 	// Register {{.Name}}
-	route = "/api/{{.Name}}s/{key}/"
-	listRoute = "/api/{{.Name}}s/"
+	route = "/api/{{.Version}}/{{.Name}}s/{key}/"
+	listRoute = "/api/{{.Version}}/{{.Name}}s/"
+	inspectRoute = "/api/{{.Version}}/inspect/{{.Name}}s/{key}/"
 	log.Infof("Registering %s", route)
 	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpList{{initialCap .Name}}s))
 	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGet{{initialCap .Name}}))
 	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreate{{initialCap .Name}}))
 	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreate{{initialCap .Name}}))
 	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDelete{{initialCap .Name}}))
+	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspect{{initialCap .Name}}))
+
   {{ end }}
 }
 
@@ -582,6 +643,51 @@ func httpGet{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars 
 	// Return the obj
 	return obj, nil
 }
+
+// GET Oper REST call
+func httpInspect{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	var obj {{ initialCap .Name }}Inspect
+	log.Debugf("Received httpInspect{{ initialCap .Name }}: %+v", vars)
+
+	key := vars["key"]
+
+	objConfig := collections.{{ .Name }}s[key]
+	if objConfig == nil {
+		log.Errorf("{{ .Name }} %s not found", key)
+		return nil, errors.New("{{ .Name }} not found")
+	}
+	obj.Config = *objConfig
+
+{{ if .OperProperties | len }}
+	if err := GetOper{{ initialCap .Name }}(&obj); err != nil {
+		log.Errorf("Get{{ initialCap .Name }} error for: %+v. Err: %v", obj, err)
+		return nil, err
+	}
+{{ end }}
+
+	// Return the obj
+	return &obj, nil
+}
+
+{{ if .OperProperties | len }}
+// Get a {{ .Name }}Oper object
+func GetOper{{ initialCap .Name }}(obj *{{ initialCap .Name }}Inspect) error {
+	// Check if we handle this object
+	if objCallbackHandler.{{ initialCap .Name }}Cb == nil {
+		log.Errorf("No callback registered for {{ .Name }} object")
+		return errors.New("Invalid object type")
+	}
+
+	// Perform callback
+	err := objCallbackHandler.{{ initialCap .Name }}Cb.{{ initialCap .Name }}GetOper(obj)
+	if err != nil {
+		log.Errorf("{{ initialCap .Name }}Delete retruned error for: %+v. Err: %v", obj, err)
+		return err
+	}
+
+	return nil
+}
+{{ end }}
 
 // CREATE REST call
 func httpCreate{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
@@ -789,7 +895,7 @@ func Validate{{initialCap .Name}}(obj *{{initialCap .Name}}) error {
 	}
 
 	// Validate each field
-	{{range $element := .Properties}}{{if eq $element.Type "int"}}{{if ne $element.Default ""}}
+	{{range $element := .CfgProperties}}{{if eq $element.Type "int"}}{{if ne $element.Default ""}}
 	if obj.{{initialCap $element.Name}} == 0 {
 		obj.{{initialCap $element.Name}} = {{$element.Default}}
 	}

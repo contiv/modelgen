@@ -1,8 +1,8 @@
 	# Create {{ .Name }}
 	def create{{ initialCap .Name }}(self, obj):
-	    postUrl = self.baseUrl + '/api/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
+	    postUrl = self.baseUrl + '/api/{{ .Version }}/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
 
-	    jdata = json.dumps({ {{range $index, $element := .Properties}}
+	    jdata = json.dumps({ {{range $index, $element := .CfgProperties}}
 			"{{ .Name}}": obj.{{.Name}}, {{end}}
 	    })
 
@@ -15,7 +15,7 @@
 	# Delete {{ .Name }}
 	def delete{{ initialCap .Name }}(self, {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}}, {{ .}}{{end}}{{end}}):
 	    # Delete {{ initialCap .Name }}
-	    deleteUrl = self.baseUrl + '/api/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} {{else}}+ ":" + {{ .}} {{end}}{{end}} + '/'
+	    deleteUrl = self.baseUrl + '/api/{{ .Version }}/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} {{else}}+ ":" + {{ .}} {{end}}{{end}} + '/'
 	    response = httpDelete(deleteUrl)
 
 	    if response == "Error":
@@ -24,7 +24,7 @@
 	# List all {{ .Name }} objects
 	def list{{ initialCap .Name }}(self):
 	    # Get a list of {{ .Name }} objects
-	    retDate = urllib2.urlopen(self.baseUrl + '/api/{{ .Name }}s/')
+	    retDate = urllib2.urlopen(self.baseUrl + '/api/{{ .Version }}/{{ .Name }}s/')
 	    if retData == "Error":
 	        errorExit("list {{ initialCap .Name }} failed")
 

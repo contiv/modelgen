@@ -41,13 +41,31 @@ func ParseSchema(input []byte) (*Schema, error) {
 			return nil, errors.New("Object has no name")
 		}
 
+		// check there is a version for the object
+		if obj.Version == "" {
+			log.Errorf("object = %s", obj.Name)
+			return nil, errors.New("Object has no version")
+		}
+		if len(obj.CfgProperties) == 0 {
+			log.Errorf("CfgProperties not defined in obj: %#v", obj)
+			return nil, errors.New("CfgProperties not defined")
+		}
+
 		// Check the type
 		if (obj.Type == "") || (obj.Type != "object") {
 			return nil, errors.New("Invalid object type")
 		}
 
 		// Check each property definition
-		for propName, prop := range obj.Properties {
+		for propName, prop := range obj.CfgProperties {
+			// set the property name
+			prop.Name = propName
+
+			if !isValidProperty(prop) {
+				return nil, errors.New("Invalid property type")
+			}
+		}
+		for propName, prop := range obj.OperProperties {
 			// set the property name
 			prop.Name = propName
 
@@ -56,9 +74,11 @@ func ParseSchema(input []byte) (*Schema, error) {
 			}
 		}
 
+
 		// Make sure key properties exists
 		for _, keyField := range obj.Key {
-			if obj.Properties[keyField] == nil {
+			if obj.CfgProperties[keyField] == nil {
+				log.Errorf("Key = %s, object = %s", keyField, obj.Name)
 				return nil, errors.New("Key field does not exist")
 			}
 		}

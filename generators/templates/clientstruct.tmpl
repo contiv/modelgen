@@ -2,7 +2,7 @@ type {{ initialCap .Name }} struct {
 	// every object has a key
 	Key		string		`json:"key,omitempty"`
 
-  {{ range .Properties }} {{ .GenerateGoStructs }} {{ end }}
+  {{ range .CfgProperties }} {{ .GenerateGoStructs }} {{ end }}
 
   {{ if .LinkSets | len }}
   // add link-sets and links
@@ -24,3 +24,23 @@ type {{ initialCap .Name }}Links struct {
   {{ end }}
 }
 {{ end }}
+
+{{ if .OperProperties | len }}
+type {{ initialCap .Name }}Oper struct {
+  {{ range .OperProperties }} {{ .GenerateGoStructs }} {{ end }}
+
+  {{ if .OperLinkSets | len }}
+	// add link-sets and links
+	LinkSets	{{ initialCap .Name }}LinkSets		`json:"link-sets,omitempty"`
+  {{ end }} {{ if .OperLinks | len }} OperLinks	{{ initialCap .Name }}Links		`json:"links,omitempty"`
+  {{ end }}
+}
+{{ end }}
+
+type {{ initialCap .Name }}Inspect struct {
+	Config		{{ initialCap .Name }}
+	{{ if .OperProperties }}
+	Oper		{{ initialCap .Name }}Oper
+	{{ end }}
+}
+

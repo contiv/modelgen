@@ -8,7 +8,7 @@ var {{ initialCap .Name }}SummaryView = React.createClass({
 				<ModalTrigger modal={<{{ initialCap .Name }}ModalView {{ .Name }}={ {{ .Name }} }/>}>
 					<tr key={ {{ .Name }}.key } className="info">
 						{{ $objName := .Name }}
-						{{range $element := .Properties }} {{if eq $element.ShowSummary true}}
+						{{range $element := .CfgProperties }} {{if eq $element.ShowSummary true}}
 						<td>{ {{ $objName }}.{{ $element.Name }} }</td>
 						{{end}}{{end}}
 					</tr>
@@ -22,7 +22,7 @@ var {{ initialCap .Name }}SummaryView = React.createClass({
 				<thead>
 					<tr>
 					{{ $objName := .Name }}
-					{{range $element := .Properties }} {{if eq $element.ShowSummary true}}
+					{{range $element := .CfgProperties }} {{if eq $element.ShowSummary true}}
 						<th> {{ $element.Title }} </th> {{end}}{{end}}
 					</tr>
 				</thead>
@@ -42,7 +42,7 @@ var {{ initialCap .Name }}ModalView = React.createClass({
 	      <Modal {...this.props} bsStyle='primary' bsSize='large' title='{{ initialCap .Name }}' animation={false}>
 	        <div className='modal-body' style={ {margin: '5%',} }>
 			{{ $objName := .Name }}
-			{{range $element := .Properties }}
+			{{range $element := .CfgProperties }}
 				<Input type='text' label='{{ $element.Title }}' ref='{{ $element.Name }}' defaultValue={obj.{{$element.Name}}} placeholder='{{ $element.Title }}' />
 			{{end}}
 			</div>
