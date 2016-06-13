@@ -15,6 +15,7 @@ import (
 )
 
 type HttpApiFunc func(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error)
+
 type Tenant struct {
 	// every object has a key
 	Key string `json:"key,omitempty"`
@@ -32,6 +33,7 @@ type TenantLinkSets struct {
 type TenantInspect struct {
 	Config Tenant
 }
+
 type Network struct {
 	// every object has a key
 	Key string `json:"key,omitempty"`
@@ -56,6 +58,7 @@ type NetworkLinks struct {
 type NetworkInspect struct {
 	Config Network
 }
+
 type NetTwo struct {
 	// every object has a key
 	Key string `json:"key,omitempty"`
@@ -89,6 +92,16 @@ type NetTwoInspect struct {
 
 	Oper NetTwoOper
 }
+
+type EndpointOper struct {
+	Labels string `json:"labels,omitempty"` //
+	UUID   string `json:"uuid,omitempty"`   //
+
+}
+
+type EndpointInspect struct {
+	Oper EndpointOper
+}
 type Collections struct {
 	tenants  map[string]*Tenant
 	networks map[string]*Network
@@ -111,15 +124,21 @@ type NetworkCallbacks interface {
 
 type NetTwoCallbacks interface {
 	NetTwoGetOper(netTwo *NetTwoInspect) error
+
 	NetTwoCreate(netTwo *NetTwo) error
 	NetTwoUpdate(netTwo, params *NetTwo) error
 	NetTwoDelete(netTwo *NetTwo) error
 }
 
+type EndpointCallbacks interface {
+	EndpointGetOper(endpoint *EndpointInspect) error
+}
+
 type CallbackHandlers struct {
-	TenantCb  TenantCallbacks
-	NetworkCb NetworkCallbacks
-	NetTwoCb  NetTwoCallbacks
+	TenantCb   TenantCallbacks
+	NetworkCb  NetworkCallbacks
+	NetTwoCb   NetTwoCallbacks
+	EndpointCb EndpointCallbacks
 }
 
 var objCallbackHandler CallbackHandlers
@@ -145,6 +164,10 @@ func RegisterNetworkCallbacks(handler NetworkCallbacks) {
 
 func RegisterNetTwoCallbacks(handler NetTwoCallbacks) {
 	objCallbackHandler.NetTwoCb = handler
+}
+
+func RegisterEndpointCallbacks(handler EndpointCallbacks) {
+	objCallbackHandler.EndpointCb = handler
 }
 
 // Simple Wrapper for http handlers
@@ -189,39 +212,63 @@ func AddRoutes(router *mux.Router) {
 	// Register tenant
 	route = "/api/v1/tenants/{key}/"
 	listRoute = "/api/v1/tenants/"
-	inspectRoute = "/api/v1/inspect/tenants/{key}/"
 	log.Infof("Registering %s", route)
 	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpListTenants))
 	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGetTenant))
 	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreateTenant))
 	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreateTenant))
 	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDeleteTenant))
+
+	inspectRoute = "/api/v1/inspect/tenants/{key}/"
 	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectTenant))
 
 	// Register network
 	route = "/api/v1/networks/{key}/"
 	listRoute = "/api/v1/networks/"
-	inspectRoute = "/api/v1/inspect/networks/{key}/"
 	log.Infof("Registering %s", route)
 	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpListNetworks))
 	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGetNetwork))
 	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreateNetwork))
 	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreateNetwork))
 	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDeleteNetwork))
+
+	inspectRoute = "/api/v1/inspect/networks/{key}/"
 	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectNetwork))
 
 	// Register netTwo
 	route = "/api/v1/netTwos/{key}/"
 	listRoute = "/api/v1/netTwos/"
-	inspectRoute = "/api/v1/inspect/netTwos/{key}/"
 	log.Infof("Registering %s", route)
 	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpListNetTwos))
 	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGetNetTwo))
 	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreateNetTwo))
 	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreateNetTwo))
 	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDeleteNetTwo))
+
+	inspectRoute = "/api/v1/inspect/netTwos/{key}/"
 	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectNetTwo))
 
+	inspectRoute = "/api/v1/inspect/endpoints/{key}/"
+	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectEndpoint))
+
+}
+
+// GET Oper REST call
+func httpInspectTenant(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	var obj TenantInspect
+	log.Debugf("Received httpInspectTenant: %+v", vars)
+
+	key := vars["key"]
+
+	objConfig := collections.tenants[key]
+	if objConfig == nil {
+		log.Errorf("tenant %s not found", key)
+		return nil, errors.New("tenant not found")
+	}
+	obj.Config = *objConfig
+
+	// Return the obj
+	return &obj, nil
 }
 
 // LIST REST call
@@ -251,24 +298,6 @@ func httpGetTenant(w http.ResponseWriter, r *http.Request, vars map[string]strin
 
 	// Return the obj
 	return obj, nil
-}
-
-// GET Oper REST call
-func httpInspectTenant(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	var obj TenantInspect
-	log.Debugf("Received httpInspectTenant: %+v", vars)
-
-	key := vars["key"]
-
-	objConfig := collections.tenants[key]
-	if objConfig == nil {
-		log.Errorf("tenant %s not found", key)
-		return nil, errors.New("tenant not found")
-	}
-	obj.Config = *objConfig
-
-	// Return the obj
-	return &obj, nil
 }
 
 // CREATE REST call
@@ -481,6 +510,24 @@ func ValidateTenant(obj *Tenant) error {
 	return nil
 }
 
+// GET Oper REST call
+func httpInspectNetwork(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	var obj NetworkInspect
+	log.Debugf("Received httpInspectNetwork: %+v", vars)
+
+	key := vars["key"]
+
+	objConfig := collections.networks[key]
+	if objConfig == nil {
+		log.Errorf("network %s not found", key)
+		return nil, errors.New("network not found")
+	}
+	obj.Config = *objConfig
+
+	// Return the obj
+	return &obj, nil
+}
+
 // LIST REST call
 func httpListNetworks(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
 	log.Debugf("Received httpListNetworks: %+v", vars)
@@ -508,24 +555,6 @@ func httpGetNetwork(w http.ResponseWriter, r *http.Request, vars map[string]stri
 
 	// Return the obj
 	return obj, nil
-}
-
-// GET Oper REST call
-func httpInspectNetwork(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	var obj NetworkInspect
-	log.Debugf("Received httpInspectNetwork: %+v", vars)
-
-	key := vars["key"]
-
-	objConfig := collections.networks[key]
-	if objConfig == nil {
-		log.Errorf("network %s not found", key)
-		return nil, errors.New("network not found")
-	}
-	obj.Config = *objConfig
-
-	// Return the obj
-	return &obj, nil
 }
 
 // CREATE REST call
@@ -767,35 +796,6 @@ func ValidateNetwork(obj *Network) error {
 	return nil
 }
 
-// LIST REST call
-func httpListNetTwos(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	log.Debugf("Received httpListNetTwos: %+v", vars)
-
-	list := make([]*NetTwo, 0)
-	for _, obj := range collections.netTwos {
-		list = append(list, obj)
-	}
-
-	// Return the list
-	return list, nil
-}
-
-// GET REST call
-func httpGetNetTwo(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	log.Debugf("Received httpGetNetTwo: %+v", vars)
-
-	key := vars["key"]
-
-	obj := collections.netTwos[key]
-	if obj == nil {
-		log.Errorf("netTwo %s not found", key)
-		return nil, errors.New("netTwo not found")
-	}
-
-	// Return the obj
-	return obj, nil
-}
-
 // GET Oper REST call
 func httpInspectNetTwo(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
 	var obj NetTwoInspect
@@ -835,6 +835,35 @@ func GetOperNetTwo(obj *NetTwoInspect) error {
 	}
 
 	return nil
+}
+
+// LIST REST call
+func httpListNetTwos(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpListNetTwos: %+v", vars)
+
+	list := make([]*NetTwo, 0)
+	for _, obj := range collections.netTwos {
+		list = append(list, obj)
+	}
+
+	// Return the list
+	return list, nil
+}
+
+// GET REST call
+func httpGetNetTwo(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpGetNetTwo: %+v", vars)
+
+	key := vars["key"]
+
+	obj := collections.netTwos[key]
+	if obj == nil {
+		log.Errorf("netTwo %s not found", key)
+		return nil, errors.New("netTwo not found")
+	}
+
+	// Return the obj
+	return obj, nil
 }
 
 // CREATE REST call
@@ -1071,6 +1100,38 @@ func ValidateNetTwo(obj *NetTwo) error {
 	subnetMatch := regexp.MustCompile("^([0-9]{1,3}?.[0-9]{1,3}?.[0-9]{1,3}?.[0-9]{1,3}?/[0-9]{1,2}?)$")
 	if subnetMatch.MatchString(obj.Subnet) == false {
 		return errors.New("subnet string invalid format")
+	}
+
+	return nil
+}
+
+// GET Oper REST call
+func httpInspectEndpoint(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	var obj EndpointInspect
+	log.Debugf("Received httpInspectEndpoint: %+v", vars)
+
+	if err := GetOperEndpoint(&obj); err != nil {
+		log.Errorf("GetEndpoint error for: %+v. Err: %v", obj, err)
+		return nil, err
+	}
+
+	// Return the obj
+	return &obj, nil
+}
+
+// Get a endpointOper object
+func GetOperEndpoint(obj *EndpointInspect) error {
+	// Check if we handle this object
+	if objCallbackHandler.EndpointCb == nil {
+		log.Errorf("No callback registered for endpoint object")
+		return errors.New("Invalid object type")
+	}
+
+	// Perform callback
+	err := objCallbackHandler.EndpointCb.EndpointGetOper(obj)
+	if err != nil {
+		log.Errorf("EndpointDelete retruned error for: %+v. Err: %v", obj, err)
+		return err
 	}
 
 	return nil

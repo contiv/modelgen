@@ -1,5 +1,5 @@
 type Collections struct {
-  {{ range .Objects }} {{ .Name }}s map[string]*{{ initialCap .Name }}
+  {{ range .Objects }} {{ if .CfgProperties | len }} {{ .Name }}s map[string]*{{ initialCap .Name }} {{ end }}
   {{ end }}
 }
 

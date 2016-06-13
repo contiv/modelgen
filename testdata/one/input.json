@@ -126,6 +126,20 @@
 					"type": "string"
 				}
 			}
+		},
+		{
+			"name": "endpoint",
+			"version": "v1",
+			"type": "object",
+			"key": ["uuid"],
+			"operProperties": {
+				"uuid": {
+			  		"type": "string"
+				},
+				"labels": {
+					"type": "string"
+				}
+			}
 		}
 	]
 }

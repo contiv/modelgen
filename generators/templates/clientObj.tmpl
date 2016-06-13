@@ -1,3 +1,4 @@
+{{ if .CfgProperties | len }}
 // {{ initialCap .Name }}Post posts the {{.Name}} object
 func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) error {
 	// build key and URL
@@ -47,6 +48,23 @@ func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Ke
 	return &obj, nil
 }
 
+// {{ initialCap .Name }}Delete deletes the {{ .Name }} object
+func (c *ContivClient) {{ initialCap .Name }}Delete({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) error {
+	// build key and URL
+	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
+	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
+
+	// http get the object
+	err := httpDelete(url)
+	if err != nil {
+		log.Debugf("Error deleting {{ .Name }} %s. Err: %v", keyStr, err)
+		return err
+	}
+
+	return nil
+}
+{{ end }}
+
 // {{ initialCap .Name }}Inspect gets the {{ .Name }}Inspect object
 func (c *ContivClient) {{ initialCap .Name }}Inspect({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}Inspect, error) {
 	// build key and URL
@@ -62,20 +80,4 @@ func (c *ContivClient) {{ initialCap .Name }}Inspect({{range $index, $element :=
 	}
 
 	return &obj, nil
-}
-
-// {{ initialCap .Name }}Delete deletes the {{ .Name }} object
-func (c *ContivClient) {{ initialCap .Name }}Delete({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) error {
-	// build key and URL
-	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
-	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
-
-	// http get the object
-	err := httpDelete(url)
-	if err != nil {
-		log.Debugf("Error deleting {{ .Name }} %s. Err: %v", keyStr, err)
-		return err
-	}
-
-	return nil
 }

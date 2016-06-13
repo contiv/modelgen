@@ -1,3 +1,4 @@
+{{ if .CfgProperties | len }}
 type {{ initialCap .Name }} struct {
 	// every object has a key
 	Key		string		`json:"key,omitempty"`
@@ -24,6 +25,7 @@ type {{ initialCap .Name }}Links struct {
   {{ end }}
 }
 {{ end }}
+{{ end }}
 
 {{ if .OperProperties | len }}
 type {{ initialCap .Name }}Oper struct {
@@ -38,7 +40,10 @@ type {{ initialCap .Name }}Oper struct {
 {{ end }}
 
 type {{ initialCap .Name }}Inspect struct {
+	{{ if .CfgProperties }}
 	Config		{{ initialCap .Name }}
+	{{ end }}
+
 	{{ if .OperProperties }}
 	Oper		{{ initialCap .Name }}Oper
 	{{ end }}
