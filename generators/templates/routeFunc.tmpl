@@ -73,6 +73,8 @@ func httpInspect{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, v
 		return nil, errors.New("{{ .Name }} not found")
 	}
 	obj.Config = *objConfig
+{{ else }}
+	obj.Oper.Key = vars["key"]
 {{ end }}
 
 {{ if .OperProperties | len }}

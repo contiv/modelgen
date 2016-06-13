@@ -29,6 +29,9 @@ type {{ initialCap .Name }}Links struct {
 
 {{ if .OperProperties | len }}
 type {{ initialCap .Name }}Oper struct {
+{{ if .CfgProperties | len }}{{ else }}
+	// oper object key (present for oper only objects)
+	Key		string		`json:"key,omitempty"` {{ end }}
   {{ range .OperProperties }} {{ .GenerateGoStructs }} {{ end }}
 
   {{ if .OperLinkSets | len }}

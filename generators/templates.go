@@ -434,6 +434,9 @@ type {{ initialCap .Name }}Links struct {
 
 {{ if .OperProperties | len }}
 type {{ initialCap .Name }}Oper struct {
+{{ if .CfgProperties | len }}{{ else }}
+	// oper object key (present for oper only objects)
+	Key		string		` + "`" + `json:"key,omitempty"` + "`" + ` {{ end }}
   {{ range .OperProperties }} {{ .GenerateGoStructs }} {{ end }}
 
   {{ if .OperLinkSets | len }}
@@ -661,6 +664,8 @@ func httpInspect{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, v
 		return nil, errors.New("{{ .Name }} not found")
 	}
 	obj.Config = *objConfig
+{{ else }}
+	obj.Oper.Key = vars["key"]
 {{ end }}
 
 {{ if .OperProperties | len }}
