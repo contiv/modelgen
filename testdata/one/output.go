@@ -94,6 +94,10 @@ type NetTwoInspect struct {
 }
 
 type EndpointOper struct {
+
+	// oper object key (present for oper only objects)
+	Key string `json:"key,omitempty"`
+
 	Labels string `json:"labels,omitempty"` //
 	UUID   string `json:"uuid,omitempty"`   //
 
@@ -1109,6 +1113,8 @@ func ValidateNetTwo(obj *NetTwo) error {
 func httpInspectEndpoint(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
 	var obj EndpointInspect
 	log.Debugf("Received httpInspectEndpoint: %+v", vars)
+
+	obj.Oper.Key = vars["key"]
 
 	if err := GetOperEndpoint(&obj); err != nil {
 		log.Errorf("GetEndpoint error for: %+v. Err: %v", obj, err)
