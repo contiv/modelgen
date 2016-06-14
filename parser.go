@@ -46,9 +46,9 @@ func ParseSchema(input []byte) (*Schema, error) {
 			log.Errorf("object = %s", obj.Name)
 			return nil, errors.New("Object has no version")
 		}
-		if len(obj.CfgProperties) == 0 {
-			log.Errorf("CfgProperties not defined in obj: %#v", obj)
-			return nil, errors.New("CfgProperties not defined")
+		if len(obj.CfgProperties) == 0 && len(obj.OperProperties) == 0 {
+			log.Errorf("Neither CfgProperties nor OperProperties defined in obj: %#v", obj)
+			return nil, errors.New("Niether CfgProperties nor OperProperties defined")
 		}
 
 		// Check the type
@@ -76,10 +76,19 @@ func ParseSchema(input []byte) (*Schema, error) {
 
 
 		// Make sure key properties exists
-		for _, keyField := range obj.Key {
-			if obj.CfgProperties[keyField] == nil {
-				log.Errorf("Key = %s, object = %s", keyField, obj.Name)
-				return nil, errors.New("Key field does not exist")
+		if len(obj.CfgProperties) > 0 {
+			for _, keyField := range obj.Key {
+				if obj.CfgProperties[keyField] == nil {
+					log.Errorf("Key = %s, object = %s", keyField, obj.Name)
+					return nil, errors.New("Key field does not exist in cfg")
+				}
+			}
+		} else if len(obj.OperProperties) > 0 {
+			for _, keyField := range obj.Key {
+				if obj.OperProperties[keyField] == nil {
+					log.Errorf("Key = %s, object = %s", keyField, obj.Name)
+					return nil, errors.New("Key field does not exist in oper")
+				}
 			}
 		}
 

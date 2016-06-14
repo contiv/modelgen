@@ -6,9 +6,10 @@ var templates = map[string]string{
 type {{ initialCap .Name }}Callbacks interface {
 {{ if .OperProperties | len }}
   {{ initialCap .Name }}GetOper({{ .Name }} *{{ initialCap .Name }}Inspect) error {{ end }}
+{{ if .CfgProperties | len }}
   {{ initialCap .Name }}Create({{ .Name }} *{{ initialCap .Name }}) error
   {{ initialCap .Name }}Update({{ .Name }}, params *{{ initialCap .Name }}) error
-  {{ initialCap .Name }}Delete({{ .Name }} *{{ initialCap .Name }}) error
+  {{ initialCap .Name }}Delete({{ .Name }} *{{ initialCap .Name }}) error {{ end }}
 }
 {{ end }}
 
@@ -169,6 +170,7 @@ func NewContivClient(baseURL string) (*ContivClient, error) {
 }
   `,
 	"clientObj": `
+{{ if .CfgProperties | len }}
 // {{ initialCap .Name }}Post posts the {{.Name}} object
 func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) error {
 	// build key and URL
@@ -218,6 +220,23 @@ func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Ke
 	return &obj, nil
 }
 
+// {{ initialCap .Name }}Delete deletes the {{ .Name }} object
+func (c *ContivClient) {{ initialCap .Name }}Delete({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) error {
+	// build key and URL
+	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
+	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
+
+	// http get the object
+	err := httpDelete(url)
+	if err != nil {
+		log.Debugf("Error deleting {{ .Name }} %s. Err: %v", keyStr, err)
+		return err
+	}
+
+	return nil
+}
+{{ end }}
+
 // {{ initialCap .Name }}Inspect gets the {{ .Name }}Inspect object
 func (c *ContivClient) {{ initialCap .Name }}Inspect({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) (*{{ initialCap .Name }}Inspect, error) {
 	// build key and URL
@@ -234,24 +253,9 @@ func (c *ContivClient) {{ initialCap .Name }}Inspect({{range $index, $element :=
 
 	return &obj, nil
 }
-
-// {{ initialCap .Name }}Delete deletes the {{ .Name }} object
-func (c *ContivClient) {{ initialCap .Name }}Delete({{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}} string{{else}}, {{ .}} string{{end}}{{end}}) error {
-	// build key and URL
-	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}{{ .}}{{else}} + ":" + {{ .}}{{end}}{{end}}
-	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
-
-	// http get the object
-	err := httpDelete(url)
-	if err != nil {
-		log.Debugf("Error deleting {{ .Name }} %s. Err: %v", keyStr, err)
-		return err
-	}
-
-	return nil
-}
   `,
 	"clientstruct": `
+{{ if .CfgProperties | len }}
 type {{ initialCap .Name }} struct {
 	// every object has a key
 	Key		string		` + "`" + `json:"key,omitempty"` + "`" + `
@@ -278,6 +282,7 @@ type {{ initialCap .Name }}Links struct {
   {{ end }}
 }
 {{ end }}
+{{ end }}
 
 {{ if .OperProperties | len }}
 type {{ initialCap .Name }}Oper struct {
@@ -292,7 +297,10 @@ type {{ initialCap .Name }}Oper struct {
 {{ end }}
 
 type {{ initialCap .Name }}Inspect struct {
+	{{ if .CfgProperties }}
 	Config		{{ initialCap .Name }}
+	{{ end }}
+
 	{{ if .OperProperties }}
 	Oper		{{ initialCap .Name }}Oper
 	{{ end }}
@@ -301,7 +309,7 @@ type {{ initialCap .Name }}Inspect struct {
   `,
 	"gostructs": `
 type Collections struct {
-  {{ range .Objects }} {{ .Name }}s map[string]*{{ initialCap .Name }}
+  {{ range .Objects }} {{ if .CfgProperties | len }} {{ .Name }}s map[string]*{{ initialCap .Name }} {{ end }}
   {{ end }}
 }
 
@@ -328,9 +336,9 @@ type HttpApiFunc func(w http.ResponseWriter, r *http.Request, vars map[string]st
   `,
 	"init": `
 func Init() {
-  {{ range .Objects }} collections.{{ .Name }}s = make(map[string]*{{ initialCap .Name }})
+  {{ range .Objects }} {{ if .CfgProperties | len }} collections.{{ .Name }}s = make(map[string]*{{ initialCap .Name }}) {{ end }}
   {{ end }}
-  {{ range .Objects }} restore{{ initialCap .Name}}()
+  {{ range .Objects }} {{ if .CfgProperties | len }} restore{{ initialCap .Name}}() {{ end }}
   {{ end }}
 }
   `,
@@ -395,6 +403,7 @@ module.exports.{{ initialCap .Name }}SummaryView = {{ initialCap .Name }}Summary
 module.exports.{{ initialCap .Name }}ModalView = {{ initialCap .Name }}ModalView
   `,
 	"objstruct": `
+{{ if .CfgProperties | len }}
 type {{ initialCap .Name }} struct {
 	// every object has a key
 	Key		string		` + "`" + `json:"key,omitempty"` + "`" + `
@@ -421,9 +430,13 @@ type {{ initialCap .Name }}Links struct {
   {{ end }}
 }
 {{ end }}
+{{ end }}
 
 {{ if .OperProperties | len }}
 type {{ initialCap .Name }}Oper struct {
+{{ if .CfgProperties | len }}{{ else }}
+	// oper object key (present for oper only objects)
+	Key		string		` + "`" + `json:"key,omitempty"` + "`" + ` {{ end }}
   {{ range .OperProperties }} {{ .GenerateGoStructs }} {{ end }}
 
   {{ if .OperLinkSets | len }}
@@ -434,7 +447,10 @@ type {{ initialCap .Name }}Oper struct {
 {{ end }}
 
 type {{ initialCap .Name }}Inspect struct {
+	{{ if .CfgProperties }}
 	Config		{{ initialCap .Name }}
+	{{ end }}
+
 	{{ if .OperProperties }}
 	Oper		{{ initialCap .Name }}Oper
 	{{ end }}
@@ -519,6 +535,7 @@ class objmodelClient:
 		self.baseUrl = baseUrl
   `,
 	"pyclientObj": `
+{{ if .CfgProperties | len }}
 	# Create {{ .Name }}
 	def create{{ initialCap .Name }}(self, obj):
 	    postUrl = self.baseUrl + '/api/{{ .Version }}/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
@@ -550,6 +567,19 @@ class objmodelClient:
 	        errorExit("list {{ initialCap .Name }} failed")
 
 	    return json.loads(retData)
+{{ end }}
+
+{{ if .OperProperties | len }}
+	# Inspect {{ .Name }}
+	def create{{ initialCap .Name }}(self, obj):
+	    postUrl = self.baseUrl + '/api/{{ .Version }}/inspect/{{ .Name }}/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
+
+	    retDate = urllib2.urlopen(postUrl)
+	    if retData == "Error":
+	        errorExit("list {{ initialCap .Name }} failed")
+
+	    return json.loads(retData)
+{{ end }}
   `,
 	"register": `
 {{ range .Objects }}
@@ -599,56 +629,33 @@ func AddRoutes(router *mux.Router) {
 	var route, listRoute, inspectRoute string
 
   {{ range .Objects }}
+
+	{{ if .CfgProperties | len }}
 	// Register {{.Name}}
 	route = "/api/{{.Version}}/{{.Name}}s/{key}/"
 	listRoute = "/api/{{.Version}}/{{.Name}}s/"
-	inspectRoute = "/api/{{.Version}}/inspect/{{.Name}}s/{key}/"
 	log.Infof("Registering %s", route)
 	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpList{{initialCap .Name}}s))
 	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGet{{initialCap .Name}}))
 	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreate{{initialCap .Name}}))
 	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreate{{initialCap .Name}}))
 	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDelete{{initialCap .Name}}))
+  {{ end }}
+
+	inspectRoute = "/api/{{.Version}}/inspect/{{.Name}}s/{key}/"
 	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspect{{initialCap .Name}}))
 
   {{ end }}
 }
 
 {{ range .Objects }}
-// LIST REST call
-func httpList{{ initialCap .Name }}s(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	log.Debugf("Received httpList{{ initialCap .Name }}s: %+v", vars)
-
-	list := make([]*{{ initialCap .Name }}, 0)
-	for _, obj := range collections.{{ .Name }}s {
-		list = append(list, obj)
-	}
-
-	// Return the list
-	return list, nil
-}
-
-// GET REST call
-func httpGet{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	log.Debugf("Received httpGet{{ initialCap .Name }}: %+v", vars)
-
-	key := vars["key"]
-
-	obj := collections.{{ .Name }}s[key]
-	if obj == nil {
-		log.Errorf("{{ .Name }} %s not found", key)
-		return nil, errors.New("{{ .Name }} not found")
-	}
-
-	// Return the obj
-	return obj, nil
-}
 
 // GET Oper REST call
 func httpInspect{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
 	var obj {{ initialCap .Name }}Inspect
 	log.Debugf("Received httpInspect{{ initialCap .Name }}: %+v", vars)
 
+{{ if .CfgProperties | len }}
 	key := vars["key"]
 
 	objConfig := collections.{{ .Name }}s[key]
@@ -657,6 +664,9 @@ func httpInspect{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, v
 		return nil, errors.New("{{ .Name }} not found")
 	}
 	obj.Config = *objConfig
+{{ else }}
+	obj.Oper.Key = vars["key"]
+{{ end }}
 
 {{ if .OperProperties | len }}
 	if err := GetOper{{ initialCap .Name }}(&obj); err != nil {
@@ -688,6 +698,37 @@ func GetOper{{ initialCap .Name }}(obj *{{ initialCap .Name }}Inspect) error {
 	return nil
 }
 {{ end }}
+
+
+{{ if .CfgProperties | len }}
+// LIST REST call
+func httpList{{ initialCap .Name }}s(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpList{{ initialCap .Name }}s: %+v", vars)
+
+	list := make([]*{{ initialCap .Name }}, 0)
+	for _, obj := range collections.{{ .Name }}s {
+		list = append(list, obj)
+	}
+
+	// Return the list
+	return list, nil
+}
+
+// GET REST call
+func httpGet{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpGet{{ initialCap .Name }}: %+v", vars)
+
+	key := vars["key"]
+
+	obj := collections.{{ .Name }}s[key]
+	if obj == nil {
+		log.Errorf("{{ .Name }} %s not found", key)
+		return nil, errors.New("{{ .Name }} not found")
+	}
+
+	// Return the obj
+	return obj, nil
+}
 
 // CREATE REST call
 func httpCreate{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
@@ -940,7 +981,9 @@ func Validate{{initialCap .Name}}(obj *{{initialCap .Name}}) error {
 
 	return nil
 }
+{{ end }}
 
 {{ end }}
+
   `,
 }

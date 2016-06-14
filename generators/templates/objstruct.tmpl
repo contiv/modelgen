@@ -1,3 +1,4 @@
+{{ if .CfgProperties | len }}
 type {{ initialCap .Name }} struct {
 	// every object has a key
 	Key		string		`json:"key,omitempty"`
@@ -24,9 +25,13 @@ type {{ initialCap .Name }}Links struct {
   {{ end }}
 }
 {{ end }}
+{{ end }}
 
 {{ if .OperProperties | len }}
 type {{ initialCap .Name }}Oper struct {
+{{ if .CfgProperties | len }}{{ else }}
+	// oper object key (present for oper only objects)
+	Key		string		`json:"key,omitempty"` {{ end }}
   {{ range .OperProperties }} {{ .GenerateGoStructs }} {{ end }}
 
   {{ if .OperLinkSets | len }}
@@ -37,7 +42,10 @@ type {{ initialCap .Name }}Oper struct {
 {{ end }}
 
 type {{ initialCap .Name }}Inspect struct {
+	{{ if .CfgProperties }}
 	Config		{{ initialCap .Name }}
+	{{ end }}
+
 	{{ if .OperProperties }}
 	Oper		{{ initialCap .Name }}Oper
 	{{ end }}

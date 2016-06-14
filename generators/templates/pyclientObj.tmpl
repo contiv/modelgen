@@ -1,3 +1,4 @@
+{{ if .CfgProperties | len }}
 	# Create {{ .Name }}
 	def create{{ initialCap .Name }}(self, obj):
 	    postUrl = self.baseUrl + '/api/{{ .Version }}/{{ .Name }}s/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
@@ -29,3 +30,16 @@
 	        errorExit("list {{ initialCap .Name }} failed")
 
 	    return json.loads(retData)
+{{ end }}
+
+{{ if .OperProperties | len }}
+	# Inspect {{ .Name }}
+	def create{{ initialCap .Name }}(self, obj):
+	    postUrl = self.baseUrl + '/api/{{ .Version }}/inspect/{{ .Name }}/' + {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{ .}} {{else}}+ ":" + obj.{{ .}} {{end}}{{end}} + '/'
+
+	    retDate = urllib2.urlopen(postUrl)
+	    if retData == "Error":
+	        errorExit("list {{ initialCap .Name }} failed")
+
+	    return json.loads(retData)
+{{ end }}
