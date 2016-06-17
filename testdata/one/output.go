@@ -106,6 +106,36 @@ type EndpointOper struct {
 type EndpointInspect struct {
 	Oper EndpointOper
 }
+
+type EpListOper struct {
+
+	// oper object key (present for oper only objects)
+	Key string `json:"key,omitempty"`
+
+	Eps    []EndpointOper `json:"eps,omitempty"`
+	Name   string         `json:"name,omitempty"`   //
+	Subnet string         `json:"subnet,omitempty"` //
+
+}
+
+type EpListInspect struct {
+	Oper EpListOper
+}
+
+type NetWithEpOper struct {
+
+	// oper object key (present for oper only objects)
+	Key string `json:"key,omitempty"`
+
+	Ep     EndpointOper `json:"ep,omitempty"`     //
+	Name   string       `json:"name,omitempty"`   //
+	Subnet string       `json:"subnet,omitempty"` //
+
+}
+
+type NetWithEpInspect struct {
+	Oper NetWithEpOper
+}
 type Collections struct {
 	tenants  map[string]*Tenant
 	networks map[string]*Network
@@ -138,11 +168,21 @@ type EndpointCallbacks interface {
 	EndpointGetOper(endpoint *EndpointInspect) error
 }
 
+type EpListCallbacks interface {
+	EpListGetOper(epList *EpListInspect) error
+}
+
+type NetWithEpCallbacks interface {
+	NetWithEpGetOper(netWithEp *NetWithEpInspect) error
+}
+
 type CallbackHandlers struct {
-	TenantCb   TenantCallbacks
-	NetworkCb  NetworkCallbacks
-	NetTwoCb   NetTwoCallbacks
-	EndpointCb EndpointCallbacks
+	TenantCb    TenantCallbacks
+	NetworkCb   NetworkCallbacks
+	NetTwoCb    NetTwoCallbacks
+	EndpointCb  EndpointCallbacks
+	EpListCb    EpListCallbacks
+	NetWithEpCb NetWithEpCallbacks
 }
 
 var objCallbackHandler CallbackHandlers
@@ -172,6 +212,14 @@ func RegisterNetTwoCallbacks(handler NetTwoCallbacks) {
 
 func RegisterEndpointCallbacks(handler EndpointCallbacks) {
 	objCallbackHandler.EndpointCb = handler
+}
+
+func RegisterEpListCallbacks(handler EpListCallbacks) {
+	objCallbackHandler.EpListCb = handler
+}
+
+func RegisterNetWithEpCallbacks(handler NetWithEpCallbacks) {
+	objCallbackHandler.NetWithEpCb = handler
 }
 
 // Simple Wrapper for http handlers
@@ -254,6 +302,12 @@ func AddRoutes(router *mux.Router) {
 
 	inspectRoute = "/api/v1/inspect/endpoints/{key}/"
 	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectEndpoint))
+
+	inspectRoute = "/api/v1/inspect/epLists/{key}/"
+	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectEpList))
+
+	inspectRoute = "/api/v1/inspect/netWithEps/{key}/"
+	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectNetWithEp))
 
 }
 
@@ -1137,6 +1191,74 @@ func GetOperEndpoint(obj *EndpointInspect) error {
 	err := objCallbackHandler.EndpointCb.EndpointGetOper(obj)
 	if err != nil {
 		log.Errorf("EndpointDelete retruned error for: %+v. Err: %v", obj, err)
+		return err
+	}
+
+	return nil
+}
+
+// GET Oper REST call
+func httpInspectEpList(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	var obj EpListInspect
+	log.Debugf("Received httpInspectEpList: %+v", vars)
+
+	obj.Oper.Key = vars["key"]
+
+	if err := GetOperEpList(&obj); err != nil {
+		log.Errorf("GetEpList error for: %+v. Err: %v", obj, err)
+		return nil, err
+	}
+
+	// Return the obj
+	return &obj, nil
+}
+
+// Get a epListOper object
+func GetOperEpList(obj *EpListInspect) error {
+	// Check if we handle this object
+	if objCallbackHandler.EpListCb == nil {
+		log.Errorf("No callback registered for epList object")
+		return errors.New("Invalid object type")
+	}
+
+	// Perform callback
+	err := objCallbackHandler.EpListCb.EpListGetOper(obj)
+	if err != nil {
+		log.Errorf("EpListDelete retruned error for: %+v. Err: %v", obj, err)
+		return err
+	}
+
+	return nil
+}
+
+// GET Oper REST call
+func httpInspectNetWithEp(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	var obj NetWithEpInspect
+	log.Debugf("Received httpInspectNetWithEp: %+v", vars)
+
+	obj.Oper.Key = vars["key"]
+
+	if err := GetOperNetWithEp(&obj); err != nil {
+		log.Errorf("GetNetWithEp error for: %+v. Err: %v", obj, err)
+		return nil, err
+	}
+
+	// Return the obj
+	return &obj, nil
+}
+
+// Get a netWithEpOper object
+func GetOperNetWithEp(obj *NetWithEpInspect) error {
+	// Check if we handle this object
+	if objCallbackHandler.NetWithEpCb == nil {
+		log.Errorf("No callback registered for netWithEp object")
+		return errors.New("Invalid object type")
+	}
+
+	// Perform callback
+	err := objCallbackHandler.NetWithEpCb.NetWithEpGetOper(obj)
+	if err != nil {
+		log.Errorf("NetWithEpDelete retruned error for: %+v. Err: %v", obj, err)
 		return err
 	}
 

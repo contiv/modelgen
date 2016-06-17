@@ -140,6 +140,41 @@
 					"type": "string"
 				}
 			}
+		},
+		{
+			"name": "epList",
+			"version": "v1",
+			"type": "object",
+			"key": ["name"],
+			"operProperties": {
+				"name": {
+			  		"type": "string"
+				},
+				"subnet": {
+					"type": "string"
+				},
+				"eps" : {
+					"type": "array",
+					"items": "endpoint"
+				}
+			}
+		},
+		{
+			"name": "netWithEp",
+			"version": "v1",
+			"type": "object",
+			"key": ["name"],
+			"operProperties": {
+				"name": {
+			  		"type": "string"
+				},
+				"subnet": {
+					"type": "string"
+				},
+				"ep" : {
+					"type": "endpoint"
+				}
+			}
 		}
 	]
 }

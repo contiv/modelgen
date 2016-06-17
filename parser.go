@@ -23,8 +23,12 @@ import (
 	"github.com/contiv/modelgen/texthelpers"
 )
 
+var validObjects map[string]bool
+
 // ParseSchema parses the json schema and returns a Schema object
 func ParseSchema(input []byte) (*Schema, error) {
+	validObjects = make(map[string]bool)
+
 	schema := new(Schema)
 
 	// Decode json
@@ -32,6 +36,13 @@ func ParseSchema(input []byte) (*Schema, error) {
 	if err != nil {
 		log.Errorf("Error decoding json. Err: %v", err)
 		return nil, err
+	}
+
+	// Collect valid list of objects so they can be included in others
+	for _, obj := range schema.Objects {
+		if obj.Name != "" {
+			validObjects[obj.Name] = true
+		}
 	}
 
 	// Perform error checking on the schema
@@ -62,7 +73,10 @@ func ParseSchema(input []byte) (*Schema, error) {
 			prop.Name = propName
 
 			if !isValidProperty(prop) {
-				return nil, errors.New("Invalid property type")
+				if !isValidObject(prop, validObjects) {
+					return nil, errors.New("Invalid property type")
+				}
+				prop.CfgObject = true
 			}
 		}
 		for propName, prop := range obj.OperProperties {
@@ -70,7 +84,10 @@ func ParseSchema(input []byte) (*Schema, error) {
 			prop.Name = propName
 
 			if !isValidProperty(prop) {
-				return nil, errors.New("Invalid property type")
+				if !isValidObject(prop, validObjects) {
+					return nil, errors.New("Invalid property type")
+				}
+				prop.CfgObject = false
 			}
 		}
 
@@ -126,7 +143,15 @@ func isValidProperty(prop *Property) bool {
 			return false
 		}
 	default:
-		log.Errorf("Unknown proprty type %s for %s", prop.Type, prop.Name)
+		return false
+	}
+
+	return true
+}
+
+func isValidObject(prop *Property, validObjects map[string]bool) bool {
+	if _, ok := validObjects[prop.Type]; !ok {
+		log.Errorf("Unknown object type %s for %s", prop.Type, prop.Name)
 		return false
 	}
 

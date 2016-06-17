@@ -14,7 +14,8 @@ var funcMap = template.FuncMap{
 	"initialLow":    texthelpers.InitialLow,
 	"depunct":       texthelpers.Depunct,
 	"capFirst":      texthelpers.CapFirst,
-	"translateType": texthelpers.TranslatePropertyType,
+	"translateCfgType": texthelpers.TranslateCfgPropertyType,
+	"translateOperType": texthelpers.TranslateOperPropertyType,
 }
 
 func ParseTemplates() error {

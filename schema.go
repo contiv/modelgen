@@ -48,6 +48,7 @@ type Property struct {
 	Default     string  `json:"default,omitempty"`
 	Format      string  `json:"format,omitempty"`
 	ShowSummary bool    `json:"showSummary,omitempty"`
+	CfgObject   bool    `json:"showSummary,omitempty"`
 }
 
 type LinkSet struct {

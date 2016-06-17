@@ -457,7 +457,7 @@ type {{ initialCap .Name }}Inspect struct {
 }
   `,
 	"propstruct": `
-{{ initialCap .Name }}{{ if eq .Type "array" }} []{{ translateType .Items }} ` + "`" + `json:"{{ .Name }},omitempty"` + "`" + ` {{ else }} {{ translateType .Type }} ` + "`" + `json:"{{ .Name }},omitempty"` + "`" + ` // {{.Title}} {{ end }}
+{{ initialCap .Name }} {{ if eq .Type "array" }} []{{ if .CfgObject }}{{ translateCfgType .Items }}{{ else }}{{ translateOperType .Items }}{{ end }} ` + "`" + `json:"{{ .Name }},omitempty"` + "`" + `{{ else }} {{ if .CfgObject }}{{ translateCfgType .Type }}{{ else }}{{ translateOperType .Type }}{{ end}} ` + "`" + `json:"{{ .Name }},omitempty"` + "`" + ` // {{.Title}} {{ end }}
   `,
 	"pyclientHdr": `
 # {{.Name}} REST client
