@@ -64,7 +64,7 @@ func CapFirst(ident string) string {
 	return string(unicode.ToUpper(r)) + ident[n:]
 }
 
-func TranslatePropertyType(propType string) string {
+func TranslateCfgPropertyType(propType string) string {
 	var goStr string
 	switch propType {
 	case "string":
@@ -76,7 +76,25 @@ func TranslatePropertyType(propType string) string {
 	case "bool":
 		return propType
 	default:
-		return ""
+		return InitialCap(propType)+"Cfg"
+	}
+
+	return goStr
+}
+
+func TranslateOperPropertyType(propType string) string {
+	var goStr string
+	switch propType {
+	case "string":
+		fallthrough
+	case "number":
+		fallthrough
+	case "int":
+		fallthrough
+	case "bool":
+		return propType
+	default:
+		return InitialCap(propType)+"Oper"
 	}
 
 	return goStr
