@@ -44,17 +44,45 @@ func TestParseJsonSchema(t *testing.T) {
 
 	for _, name := range dirnames {
 		t.Logf("Parsing suite %s", name)
+		var schema *Schema
 		basepath := filepath.Join("testdata", name)
-		input, err := ioutil.ReadFile(filepath.Join(basepath, "input.json"))
+
+		// Parse all files in input directory
+		err := filepath.Walk(basepath, func(path string, fi os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			// Ignore non-json files and ignore files in subdirs
+			if filepath.Ext(path) != ".json" {
+				return nil
+			}
+
+			t.Logf("Parsing file: %q\n", path)
+
+			b, err := ioutil.ReadFile(path)
+			if err != nil {
+				return err
+			}
+
+			// Parse the schema
+			sch, err := ParseSchema(b)
+			if err != nil {
+				return err
+			}
+
+			// Append to global schema
+			schema = MergeSchema(schema, sch)
+
+			return nil
+		})
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		// Parse the input json string
-		schema, err := ParseSchema(input)
-		if err != nil {
-			t.Fatalf("Error parsing json schema. Err: %v", err)
-		}
+        if schema == nil {
+            t.Fatal("Could not find schema, aborting.")
+        }
 
 		// Generate the code
 		goStr, err := schema.GenerateGo()

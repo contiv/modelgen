@@ -2,23 +2,6 @@
 	"name": "contivModel",
 	"objects": [
 		{
-			"name": "tenant",
-			"version": "v1",
-			"type": "object",
-			"key": ["tenantName"],
-			"cfgProperties": {
-				"tenantName": {
-					"type": "string",
-					"description": "Tenant Name"
-				}
-			},
-			"link-sets": {
-				"networks": {
-					"ref": "network"
-				}
-			}
-		},
-		{
 			"name": "network",
 			"version": "v1",
 			"type": "object",
@@ -124,38 +107,6 @@
 				},
 				"createTime": {
 					"type": "string"
-				}
-			}
-		},
-		{
-			"name": "endpoint",
-			"version": "v1",
-			"type": "object",
-			"key": ["uuid"],
-			"operProperties": {
-				"uuid": {
-			  		"type": "string"
-				},
-				"labels": {
-					"type": "string"
-				}
-			}
-		},
-		{
-			"name": "epList",
-			"version": "v1",
-			"type": "object",
-			"key": ["name"],
-			"operProperties": {
-				"name": {
-			  		"type": "string"
-				},
-				"subnet": {
-					"type": "string"
-				},
-				"eps" : {
-					"type": "array",
-					"items": "endpoint"
 				}
 			}
 		},

@@ -18,17 +18,27 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/contiv/modelgen/texthelpers"
 )
 
 var validObjects map[string]bool
+var propList []*Property
+
+func init() {
+	validObjects = make(map[string]bool)
+
+    //Adding standard types as valid objects
+    validObjects["string"] = true
+    validObjects["int"] = true
+    validObjects["number"] = true
+    validObjects["bool"] = true
+}
 
 // ParseSchema parses the json schema and returns a Schema object
 func ParseSchema(input []byte) (*Schema, error) {
-	validObjects = make(map[string]bool)
-
 	schema := new(Schema)
 
 	// Decode json
@@ -59,7 +69,7 @@ func ParseSchema(input []byte) (*Schema, error) {
 		}
 		if len(obj.CfgProperties) == 0 && len(obj.OperProperties) == 0 {
 			log.Errorf("Neither CfgProperties nor OperProperties defined in obj: %#v", obj)
-			return nil, errors.New("Niether CfgProperties nor OperProperties defined")
+			return nil, errors.New("Neither CfgProperties nor OperProperties defined")
 		}
 
 		// Check the type
@@ -73,9 +83,9 @@ func ParseSchema(input []byte) (*Schema, error) {
 			prop.Name = propName
 
 			if !isValidProperty(prop) {
-				if !isValidObject(prop, validObjects) {
-					return nil, errors.New("Invalid property type")
-				}
+				// Add property type to list of objects to be verified
+				propList = append(propList, prop)
+
 				prop.CfgObject = true
 			}
 		}
@@ -84,13 +94,12 @@ func ParseSchema(input []byte) (*Schema, error) {
 			prop.Name = propName
 
 			if !isValidProperty(prop) {
-				if !isValidObject(prop, validObjects) {
-					return nil, errors.New("Invalid property type")
-				}
+				// Add property type to list of objects to be verified
+				propList = append(propList, prop)
+
 				prop.CfgObject = false
 			}
 		}
-
 
 		// Make sure key properties exists
 		if len(obj.CfgProperties) > 0 {
@@ -142,6 +151,8 @@ func isValidProperty(prop *Property) bool {
 			log.Errorf("Array property %s needs items field", prop.Name)
 			return false
 		}
+		// Add property type to list of objects to be verified
+		propList = append(propList, prop)
 	default:
 		return false
 	}
@@ -149,13 +160,23 @@ func isValidProperty(prop *Property) bool {
 	return true
 }
 
-func isValidObject(prop *Property, validObjects map[string]bool) bool {
-	if _, ok := validObjects[prop.Type]; !ok {
-		log.Errorf("Unknown object type %s for %s", prop.Type, prop.Name)
-		return false
-	}
+// VerifyObjects check if the objects referenced are valid object types
+func VerifyObjects(properties []*Property, validObjects map[string]bool) error {
+	var propType string
 
-	return true
+	for _, prop := range properties {
+		if prop.Type == "array" {
+			propType = prop.Items
+		} else {
+			propType = prop.Type
+		}
+
+		if _, ok := validObjects[propType]; !ok {
+			errString := fmt.Sprintf("Unknown object type %s for %s", propType, prop.Name)
+			return errors.New(errString)
+		}
+	}
+	return nil
 }
 
 // MergeSchema merges two schemas and returns the result
