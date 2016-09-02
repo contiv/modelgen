@@ -23,16 +23,16 @@ type Schema struct {
 
 // Object represents a schema object
 type Object struct {
-	Name       	string               `json:"name,omitempty"`
-	Version       	string               `json:"version,omitempty"`
-	Type       	string               `json:"type,omitempty"`
-	Key        	[]string             `json:"key,omitempty"`
-	CfgProperties 	map[string]*Property `json:"cfgProperties,omitempty"`
-	OperProperties 	map[string]*Property `json:"operProperties,omitempty"`
-	LinkSets   	map[string]*LinkSet  `json:"link-sets,omitempty"`
-	Links      	map[string]*Link     `json:"links,omitempty"`
-	OperLinkSets   	map[string]*LinkSet  `json:"oper-link-sets,omitempty"`
-	OperLinks      	map[string]*Link     `json:"oper-links,omitempty"`
+	Name           string               `json:"name,omitempty"`
+	Version        string               `json:"version,omitempty"`
+	Type           string               `json:"type,omitempty"`
+	Key            []string             `json:"key,omitempty"`
+	CfgProperties  map[string]*Property `json:"cfgProperties,omitempty"`
+	OperProperties map[string]*Property `json:"operProperties,omitempty"`
+	LinkSets       map[string]*LinkSet  `json:"link-sets,omitempty"`
+	Links          map[string]*Link     `json:"links,omitempty"`
+	OperLinkSets   map[string]*LinkSet  `json:"oper-link-sets,omitempty"`
+	OperLinks      map[string]*Link     `json:"oper-links,omitempty"`
 }
 
 // Property represents a property of an object

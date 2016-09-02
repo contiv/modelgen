@@ -94,6 +94,10 @@ func run(ctx *cli.Context) {
 		log.Fatal(err)
 	}
 
+	if err = VerifyObjects(propList, validObjects); err != nil {
+		log.Fatal(err)
+	}
+
 	if schema == nil {
 		log.Fatal("Could not find schema, aborting.")
 	}

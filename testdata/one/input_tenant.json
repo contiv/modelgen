@@ -1,0 +1,22 @@
+{
+	"name": "contivModel",
+	"objects": [
+		{
+			"name": "tenant",
+			"version": "v1",
+			"type": "object",
+			"key": ["tenantName"],
+			"cfgProperties": {
+				"tenantName": {
+					"type": "string",
+					"description": "Tenant Name"
+				}
+			},
+			"link-sets": {
+				"networks": {
+					"ref": "network"
+				}
+			}
+		}
+	]
+}

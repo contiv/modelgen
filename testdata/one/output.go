@@ -16,22 +16,33 @@ import (
 
 type HttpApiFunc func(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error)
 
-type Tenant struct {
-	// every object has a key
+type EndpointOper struct {
+
+	// oper object key (present for oper only objects)
 	Key string `json:"key,omitempty"`
 
-	TenantName string `json:"tenantName,omitempty"` //
+	Labels string `json:"labels,omitempty"` //
+	UUID   string `json:"uuid,omitempty"`   //
 
-	// add link-sets and links
-	LinkSets TenantLinkSets `json:"link-sets,omitempty"`
 }
 
-type TenantLinkSets struct {
-	Networks map[string]modeldb.Link `json:"Networks,omitempty"`
+type EndpointInspect struct {
+	Oper EndpointOper
 }
 
-type TenantInspect struct {
-	Config Tenant
+type EpListOper struct {
+
+	// oper object key (present for oper only objects)
+	Key string `json:"key,omitempty"`
+
+	Eps    []EndpointOper `json:"eps,omitempty"`
+	Name   string         `json:"name,omitempty"`   //
+	Subnet string         `json:"subnet,omitempty"` //
+
+}
+
+type EpListInspect struct {
+	Oper EpListOper
 }
 
 type Network struct {
@@ -93,35 +104,6 @@ type NetTwoInspect struct {
 	Oper NetTwoOper
 }
 
-type EndpointOper struct {
-
-	// oper object key (present for oper only objects)
-	Key string `json:"key,omitempty"`
-
-	Labels string `json:"labels,omitempty"` //
-	UUID   string `json:"uuid,omitempty"`   //
-
-}
-
-type EndpointInspect struct {
-	Oper EndpointOper
-}
-
-type EpListOper struct {
-
-	// oper object key (present for oper only objects)
-	Key string `json:"key,omitempty"`
-
-	Eps    []EndpointOper `json:"eps,omitempty"`
-	Name   string         `json:"name,omitempty"`   //
-	Subnet string         `json:"subnet,omitempty"` //
-
-}
-
-type EpListInspect struct {
-	Oper EpListOper
-}
-
 type NetWithEpOper struct {
 
 	// oper object key (present for oper only objects)
@@ -136,18 +118,39 @@ type NetWithEpOper struct {
 type NetWithEpInspect struct {
 	Oper NetWithEpOper
 }
+
+type Tenant struct {
+	// every object has a key
+	Key string `json:"key,omitempty"`
+
+	TenantName string `json:"tenantName,omitempty"` //
+
+	// add link-sets and links
+	LinkSets TenantLinkSets `json:"link-sets,omitempty"`
+}
+
+type TenantLinkSets struct {
+	Networks map[string]modeldb.Link `json:"Networks,omitempty"`
+}
+
+type TenantInspect struct {
+	Config Tenant
+}
 type Collections struct {
-	tenants  map[string]*Tenant
 	networks map[string]*Network
 	netTwos  map[string]*NetTwo
+
+	tenants map[string]*Tenant
 }
 
 var collections Collections
 
-type TenantCallbacks interface {
-	TenantCreate(tenant *Tenant) error
-	TenantUpdate(tenant, params *Tenant) error
-	TenantDelete(tenant *Tenant) error
+type EndpointCallbacks interface {
+	EndpointGetOper(endpoint *EndpointInspect) error
+}
+
+type EpListCallbacks interface {
+	EpListGetOper(epList *EpListInspect) error
 }
 
 type NetworkCallbacks interface {
@@ -164,50 +167,39 @@ type NetTwoCallbacks interface {
 	NetTwoDelete(netTwo *NetTwo) error
 }
 
-type EndpointCallbacks interface {
-	EndpointGetOper(endpoint *EndpointInspect) error
-}
-
-type EpListCallbacks interface {
-	EpListGetOper(epList *EpListInspect) error
-}
-
 type NetWithEpCallbacks interface {
 	NetWithEpGetOper(netWithEp *NetWithEpInspect) error
 }
 
+type TenantCallbacks interface {
+	TenantCreate(tenant *Tenant) error
+	TenantUpdate(tenant, params *Tenant) error
+	TenantDelete(tenant *Tenant) error
+}
+
 type CallbackHandlers struct {
-	TenantCb    TenantCallbacks
-	NetworkCb   NetworkCallbacks
-	NetTwoCb    NetTwoCallbacks
 	EndpointCb  EndpointCallbacks
 	EpListCb    EpListCallbacks
+	NetworkCb   NetworkCallbacks
+	NetTwoCb    NetTwoCallbacks
 	NetWithEpCb NetWithEpCallbacks
+	TenantCb    TenantCallbacks
 }
 
 var objCallbackHandler CallbackHandlers
 
 func Init() {
-	collections.tenants = make(map[string]*Tenant)
+
 	collections.networks = make(map[string]*Network)
 	collections.netTwos = make(map[string]*NetTwo)
 
-	restoreTenant()
+	collections.tenants = make(map[string]*Tenant)
+
 	restoreNetwork()
 	restoreNetTwo()
 
-}
+	restoreTenant()
 
-func RegisterTenantCallbacks(handler TenantCallbacks) {
-	objCallbackHandler.TenantCb = handler
-}
-
-func RegisterNetworkCallbacks(handler NetworkCallbacks) {
-	objCallbackHandler.NetworkCb = handler
-}
-
-func RegisterNetTwoCallbacks(handler NetTwoCallbacks) {
-	objCallbackHandler.NetTwoCb = handler
 }
 
 func RegisterEndpointCallbacks(handler EndpointCallbacks) {
@@ -218,8 +210,20 @@ func RegisterEpListCallbacks(handler EpListCallbacks) {
 	objCallbackHandler.EpListCb = handler
 }
 
+func RegisterNetworkCallbacks(handler NetworkCallbacks) {
+	objCallbackHandler.NetworkCb = handler
+}
+
+func RegisterNetTwoCallbacks(handler NetTwoCallbacks) {
+	objCallbackHandler.NetTwoCb = handler
+}
+
 func RegisterNetWithEpCallbacks(handler NetWithEpCallbacks) {
 	objCallbackHandler.NetWithEpCb = handler
+}
+
+func RegisterTenantCallbacks(handler TenantCallbacks) {
+	objCallbackHandler.TenantCb = handler
 }
 
 // Simple Wrapper for http handlers
@@ -261,18 +265,11 @@ func writeJSON(w http.ResponseWriter, code int, v interface{}) error {
 func AddRoutes(router *mux.Router) {
 	var route, listRoute, inspectRoute string
 
-	// Register tenant
-	route = "/api/v1/tenants/{key}/"
-	listRoute = "/api/v1/tenants/"
-	log.Infof("Registering %s", route)
-	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpListTenants))
-	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGetTenant))
-	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreateTenant))
-	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreateTenant))
-	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDeleteTenant))
+	inspectRoute = "/api/v1/inspect/endpoints/{key}/"
+	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectEndpoint))
 
-	inspectRoute = "/api/v1/inspect/tenants/{key}/"
-	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectTenant))
+	inspectRoute = "/api/v1/inspect/epLists/{key}/"
+	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectEpList))
 
 	// Register network
 	route = "/api/v1/networks/{key}/"
@@ -300,270 +297,88 @@ func AddRoutes(router *mux.Router) {
 	inspectRoute = "/api/v1/inspect/netTwos/{key}/"
 	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectNetTwo))
 
-	inspectRoute = "/api/v1/inspect/endpoints/{key}/"
-	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectEndpoint))
-
-	inspectRoute = "/api/v1/inspect/epLists/{key}/"
-	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectEpList))
-
 	inspectRoute = "/api/v1/inspect/netWithEps/{key}/"
 	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectNetWithEp))
+
+	// Register tenant
+	route = "/api/v1/tenants/{key}/"
+	listRoute = "/api/v1/tenants/"
+	log.Infof("Registering %s", route)
+	router.Path(listRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpListTenants))
+	router.Path(route).Methods("GET").HandlerFunc(makeHttpHandler(httpGetTenant))
+	router.Path(route).Methods("POST").HandlerFunc(makeHttpHandler(httpCreateTenant))
+	router.Path(route).Methods("PUT").HandlerFunc(makeHttpHandler(httpCreateTenant))
+	router.Path(route).Methods("DELETE").HandlerFunc(makeHttpHandler(httpDeleteTenant))
+
+	inspectRoute = "/api/v1/inspect/tenants/{key}/"
+	router.Path(inspectRoute).Methods("GET").HandlerFunc(makeHttpHandler(httpInspectTenant))
 
 }
 
 // GET Oper REST call
-func httpInspectTenant(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	var obj TenantInspect
-	log.Debugf("Received httpInspectTenant: %+v", vars)
+func httpInspectEndpoint(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	var obj EndpointInspect
+	log.Debugf("Received httpInspectEndpoint: %+v", vars)
 
-	key := vars["key"]
+	obj.Oper.Key = vars["key"]
 
-	objConfig := collections.tenants[key]
-	if objConfig == nil {
-		log.Errorf("tenant %s not found", key)
-		return nil, errors.New("tenant not found")
+	if err := GetOperEndpoint(&obj); err != nil {
+		log.Errorf("GetEndpoint error for: %+v. Err: %v", obj, err)
+		return nil, err
 	}
-	obj.Config = *objConfig
 
 	// Return the obj
 	return &obj, nil
 }
 
-// LIST REST call
-func httpListTenants(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	log.Debugf("Received httpListTenants: %+v", vars)
-
-	list := make([]*Tenant, 0)
-	for _, obj := range collections.tenants {
-		list = append(list, obj)
-	}
-
-	// Return the list
-	return list, nil
-}
-
-// GET REST call
-func httpGetTenant(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	log.Debugf("Received httpGetTenant: %+v", vars)
-
-	key := vars["key"]
-
-	obj := collections.tenants[key]
-	if obj == nil {
-		log.Errorf("tenant %s not found", key)
-		return nil, errors.New("tenant not found")
-	}
-
-	// Return the obj
-	return obj, nil
-}
-
-// CREATE REST call
-func httpCreateTenant(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	log.Debugf("Received httpGetTenant: %+v", vars)
-
-	var obj Tenant
-	key := vars["key"]
-
-	// Get object from the request
-	err := json.NewDecoder(r.Body).Decode(&obj)
-	if err != nil {
-		log.Errorf("Error decoding tenant create request. Err %v", err)
-		return nil, err
-	}
-
-	// set the key
-	obj.Key = key
-
-	// Create the object
-	err = CreateTenant(&obj)
-	if err != nil {
-		log.Errorf("CreateTenant error for: %+v. Err: %v", obj, err)
-		return nil, err
-	}
-
-	// Return the obj
-	return obj, nil
-}
-
-// DELETE rest call
-func httpDeleteTenant(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	log.Debugf("Received httpDeleteTenant: %+v", vars)
-
-	key := vars["key"]
-
-	// Delete the object
-	err := DeleteTenant(key)
-	if err != nil {
-		log.Errorf("DeleteTenant error for: %s. Err: %v", key, err)
-		return nil, err
-	}
-
-	// Return the obj
-	return key, nil
-}
-
-// Create a tenant object
-func CreateTenant(obj *Tenant) error {
-	// Validate parameters
-	err := ValidateTenant(obj)
-	if err != nil {
-		log.Errorf("ValidateTenant retruned error for: %+v. Err: %v", obj, err)
-		return err
-	}
-
+// Get a endpointOper object
+func GetOperEndpoint(obj *EndpointInspect) error {
 	// Check if we handle this object
-	if objCallbackHandler.TenantCb == nil {
-		log.Errorf("No callback registered for tenant object")
-		return errors.New("Invalid object type")
-	}
-
-	saveObj := obj
-
-	// Check if object already exists
-	if collections.tenants[obj.Key] != nil {
-		// Perform Update callback
-		err = objCallbackHandler.TenantCb.TenantUpdate(collections.tenants[obj.Key], obj)
-		if err != nil {
-			log.Errorf("TenantUpdate retruned error for: %+v. Err: %v", obj, err)
-			return err
-		}
-
-		// save the original object after update
-		saveObj = collections.tenants[obj.Key]
-	} else {
-		// save it in cache
-		collections.tenants[obj.Key] = obj
-
-		// Perform Create callback
-		err = objCallbackHandler.TenantCb.TenantCreate(obj)
-		if err != nil {
-			log.Errorf("TenantCreate retruned error for: %+v. Err: %v", obj, err)
-			delete(collections.tenants, obj.Key)
-			return err
-		}
-	}
-
-	// Write it to modeldb
-	err = saveObj.Write()
-	if err != nil {
-		log.Errorf("Error saving tenant %s to db. Err: %v", saveObj.Key, err)
-		return err
-	}
-
-	return nil
-}
-
-// Return a pointer to tenant from collection
-func FindTenant(key string) *Tenant {
-	obj := collections.tenants[key]
-	if obj == nil {
-		return nil
-	}
-
-	return obj
-}
-
-// Delete a tenant object
-func DeleteTenant(key string) error {
-	obj := collections.tenants[key]
-	if obj == nil {
-		log.Errorf("tenant %s not found", key)
-		return errors.New("tenant not found")
-	}
-
-	// Check if we handle this object
-	if objCallbackHandler.TenantCb == nil {
-		log.Errorf("No callback registered for tenant object")
+	if objCallbackHandler.EndpointCb == nil {
+		log.Errorf("No callback registered for endpoint object")
 		return errors.New("Invalid object type")
 	}
 
 	// Perform callback
-	err := objCallbackHandler.TenantCb.TenantDelete(obj)
+	err := objCallbackHandler.EndpointCb.EndpointGetOper(obj)
 	if err != nil {
-		log.Errorf("TenantDelete retruned error for: %+v. Err: %v", obj, err)
+		log.Errorf("EndpointDelete retruned error for: %+v. Err: %v", obj, err)
 		return err
 	}
 
-	// delete it from modeldb
-	err = obj.Delete()
-	if err != nil {
-		log.Errorf("Error deleting tenant %s. Err: %v", obj.Key, err)
-	}
-
-	// delete it from cache
-	delete(collections.tenants, key)
-
 	return nil
 }
 
-func (self *Tenant) GetType() string {
-	return "tenant"
-}
+// GET Oper REST call
+func httpInspectEpList(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	var obj EpListInspect
+	log.Debugf("Received httpInspectEpList: %+v", vars)
 
-func (self *Tenant) GetKey() string {
-	return self.Key
-}
+	obj.Oper.Key = vars["key"]
 
-func (self *Tenant) Read() error {
-	if self.Key == "" {
-		log.Errorf("Empty key while trying to read tenant object")
-		return errors.New("Empty key")
+	if err := GetOperEpList(&obj); err != nil {
+		log.Errorf("GetEpList error for: %+v. Err: %v", obj, err)
+		return nil, err
 	}
 
-	return modeldb.ReadObj("tenant", self.Key, self)
+	// Return the obj
+	return &obj, nil
 }
 
-func (self *Tenant) Write() error {
-	if self.Key == "" {
-		log.Errorf("Empty key while trying to Write tenant object")
-		return errors.New("Empty key")
+// Get a epListOper object
+func GetOperEpList(obj *EpListInspect) error {
+	// Check if we handle this object
+	if objCallbackHandler.EpListCb == nil {
+		log.Errorf("No callback registered for epList object")
+		return errors.New("Invalid object type")
 	}
 
-	return modeldb.WriteObj("tenant", self.Key, self)
-}
-
-func (self *Tenant) Delete() error {
-	if self.Key == "" {
-		log.Errorf("Empty key while trying to Delete tenant object")
-		return errors.New("Empty key")
-	}
-
-	return modeldb.DeleteObj("tenant", self.Key)
-}
-
-func restoreTenant() error {
-	strList, err := modeldb.ReadAllObj("tenant")
+	// Perform callback
+	err := objCallbackHandler.EpListCb.EpListGetOper(obj)
 	if err != nil {
-		log.Errorf("Error reading tenant list. Err: %v", err)
+		log.Errorf("EpListDelete retruned error for: %+v. Err: %v", obj, err)
+		return err
 	}
-
-	for _, objStr := range strList {
-		// Parse the json model
-		var tenant Tenant
-		err = json.Unmarshal([]byte(objStr), &tenant)
-		if err != nil {
-			log.Errorf("Error parsing object %s, Err %v", objStr, err)
-			return err
-		}
-
-		// add it to the collection
-		collections.tenants[tenant.Key] = &tenant
-	}
-
-	return nil
-}
-
-// Validate a tenant object
-func ValidateTenant(obj *Tenant) error {
-	// Validate key is correct
-	keyStr := obj.TenantName
-	if obj.Key != keyStr {
-		log.Errorf("Expecting Tenant Key: %s. Got: %s", keyStr, obj.Key)
-		return errors.New("Invalid Key")
-	}
-
-	// Validate each field
 
 	return nil
 }
@@ -1164,74 +979,6 @@ func ValidateNetTwo(obj *NetTwo) error {
 }
 
 // GET Oper REST call
-func httpInspectEndpoint(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	var obj EndpointInspect
-	log.Debugf("Received httpInspectEndpoint: %+v", vars)
-
-	obj.Oper.Key = vars["key"]
-
-	if err := GetOperEndpoint(&obj); err != nil {
-		log.Errorf("GetEndpoint error for: %+v. Err: %v", obj, err)
-		return nil, err
-	}
-
-	// Return the obj
-	return &obj, nil
-}
-
-// Get a endpointOper object
-func GetOperEndpoint(obj *EndpointInspect) error {
-	// Check if we handle this object
-	if objCallbackHandler.EndpointCb == nil {
-		log.Errorf("No callback registered for endpoint object")
-		return errors.New("Invalid object type")
-	}
-
-	// Perform callback
-	err := objCallbackHandler.EndpointCb.EndpointGetOper(obj)
-	if err != nil {
-		log.Errorf("EndpointDelete retruned error for: %+v. Err: %v", obj, err)
-		return err
-	}
-
-	return nil
-}
-
-// GET Oper REST call
-func httpInspectEpList(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
-	var obj EpListInspect
-	log.Debugf("Received httpInspectEpList: %+v", vars)
-
-	obj.Oper.Key = vars["key"]
-
-	if err := GetOperEpList(&obj); err != nil {
-		log.Errorf("GetEpList error for: %+v. Err: %v", obj, err)
-		return nil, err
-	}
-
-	// Return the obj
-	return &obj, nil
-}
-
-// Get a epListOper object
-func GetOperEpList(obj *EpListInspect) error {
-	// Check if we handle this object
-	if objCallbackHandler.EpListCb == nil {
-		log.Errorf("No callback registered for epList object")
-		return errors.New("Invalid object type")
-	}
-
-	// Perform callback
-	err := objCallbackHandler.EpListCb.EpListGetOper(obj)
-	if err != nil {
-		log.Errorf("EpListDelete retruned error for: %+v. Err: %v", obj, err)
-		return err
-	}
-
-	return nil
-}
-
-// GET Oper REST call
 func httpInspectNetWithEp(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
 	var obj NetWithEpInspect
 	log.Debugf("Received httpInspectNetWithEp: %+v", vars)
@@ -1261,6 +1008,263 @@ func GetOperNetWithEp(obj *NetWithEpInspect) error {
 		log.Errorf("NetWithEpDelete retruned error for: %+v. Err: %v", obj, err)
 		return err
 	}
+
+	return nil
+}
+
+// GET Oper REST call
+func httpInspectTenant(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	var obj TenantInspect
+	log.Debugf("Received httpInspectTenant: %+v", vars)
+
+	key := vars["key"]
+
+	objConfig := collections.tenants[key]
+	if objConfig == nil {
+		log.Errorf("tenant %s not found", key)
+		return nil, errors.New("tenant not found")
+	}
+	obj.Config = *objConfig
+
+	// Return the obj
+	return &obj, nil
+}
+
+// LIST REST call
+func httpListTenants(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpListTenants: %+v", vars)
+
+	list := make([]*Tenant, 0)
+	for _, obj := range collections.tenants {
+		list = append(list, obj)
+	}
+
+	// Return the list
+	return list, nil
+}
+
+// GET REST call
+func httpGetTenant(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpGetTenant: %+v", vars)
+
+	key := vars["key"]
+
+	obj := collections.tenants[key]
+	if obj == nil {
+		log.Errorf("tenant %s not found", key)
+		return nil, errors.New("tenant not found")
+	}
+
+	// Return the obj
+	return obj, nil
+}
+
+// CREATE REST call
+func httpCreateTenant(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpGetTenant: %+v", vars)
+
+	var obj Tenant
+	key := vars["key"]
+
+	// Get object from the request
+	err := json.NewDecoder(r.Body).Decode(&obj)
+	if err != nil {
+		log.Errorf("Error decoding tenant create request. Err %v", err)
+		return nil, err
+	}
+
+	// set the key
+	obj.Key = key
+
+	// Create the object
+	err = CreateTenant(&obj)
+	if err != nil {
+		log.Errorf("CreateTenant error for: %+v. Err: %v", obj, err)
+		return nil, err
+	}
+
+	// Return the obj
+	return obj, nil
+}
+
+// DELETE rest call
+func httpDeleteTenant(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error) {
+	log.Debugf("Received httpDeleteTenant: %+v", vars)
+
+	key := vars["key"]
+
+	// Delete the object
+	err := DeleteTenant(key)
+	if err != nil {
+		log.Errorf("DeleteTenant error for: %s. Err: %v", key, err)
+		return nil, err
+	}
+
+	// Return the obj
+	return key, nil
+}
+
+// Create a tenant object
+func CreateTenant(obj *Tenant) error {
+	// Validate parameters
+	err := ValidateTenant(obj)
+	if err != nil {
+		log.Errorf("ValidateTenant retruned error for: %+v. Err: %v", obj, err)
+		return err
+	}
+
+	// Check if we handle this object
+	if objCallbackHandler.TenantCb == nil {
+		log.Errorf("No callback registered for tenant object")
+		return errors.New("Invalid object type")
+	}
+
+	saveObj := obj
+
+	// Check if object already exists
+	if collections.tenants[obj.Key] != nil {
+		// Perform Update callback
+		err = objCallbackHandler.TenantCb.TenantUpdate(collections.tenants[obj.Key], obj)
+		if err != nil {
+			log.Errorf("TenantUpdate retruned error for: %+v. Err: %v", obj, err)
+			return err
+		}
+
+		// save the original object after update
+		saveObj = collections.tenants[obj.Key]
+	} else {
+		// save it in cache
+		collections.tenants[obj.Key] = obj
+
+		// Perform Create callback
+		err = objCallbackHandler.TenantCb.TenantCreate(obj)
+		if err != nil {
+			log.Errorf("TenantCreate retruned error for: %+v. Err: %v", obj, err)
+			delete(collections.tenants, obj.Key)
+			return err
+		}
+	}
+
+	// Write it to modeldb
+	err = saveObj.Write()
+	if err != nil {
+		log.Errorf("Error saving tenant %s to db. Err: %v", saveObj.Key, err)
+		return err
+	}
+
+	return nil
+}
+
+// Return a pointer to tenant from collection
+func FindTenant(key string) *Tenant {
+	obj := collections.tenants[key]
+	if obj == nil {
+		return nil
+	}
+
+	return obj
+}
+
+// Delete a tenant object
+func DeleteTenant(key string) error {
+	obj := collections.tenants[key]
+	if obj == nil {
+		log.Errorf("tenant %s not found", key)
+		return errors.New("tenant not found")
+	}
+
+	// Check if we handle this object
+	if objCallbackHandler.TenantCb == nil {
+		log.Errorf("No callback registered for tenant object")
+		return errors.New("Invalid object type")
+	}
+
+	// Perform callback
+	err := objCallbackHandler.TenantCb.TenantDelete(obj)
+	if err != nil {
+		log.Errorf("TenantDelete retruned error for: %+v. Err: %v", obj, err)
+		return err
+	}
+
+	// delete it from modeldb
+	err = obj.Delete()
+	if err != nil {
+		log.Errorf("Error deleting tenant %s. Err: %v", obj.Key, err)
+	}
+
+	// delete it from cache
+	delete(collections.tenants, key)
+
+	return nil
+}
+
+func (self *Tenant) GetType() string {
+	return "tenant"
+}
+
+func (self *Tenant) GetKey() string {
+	return self.Key
+}
+
+func (self *Tenant) Read() error {
+	if self.Key == "" {
+		log.Errorf("Empty key while trying to read tenant object")
+		return errors.New("Empty key")
+	}
+
+	return modeldb.ReadObj("tenant", self.Key, self)
+}
+
+func (self *Tenant) Write() error {
+	if self.Key == "" {
+		log.Errorf("Empty key while trying to Write tenant object")
+		return errors.New("Empty key")
+	}
+
+	return modeldb.WriteObj("tenant", self.Key, self)
+}
+
+func (self *Tenant) Delete() error {
+	if self.Key == "" {
+		log.Errorf("Empty key while trying to Delete tenant object")
+		return errors.New("Empty key")
+	}
+
+	return modeldb.DeleteObj("tenant", self.Key)
+}
+
+func restoreTenant() error {
+	strList, err := modeldb.ReadAllObj("tenant")
+	if err != nil {
+		log.Errorf("Error reading tenant list. Err: %v", err)
+	}
+
+	for _, objStr := range strList {
+		// Parse the json model
+		var tenant Tenant
+		err = json.Unmarshal([]byte(objStr), &tenant)
+		if err != nil {
+			log.Errorf("Error parsing object %s, Err %v", objStr, err)
+			return err
+		}
+
+		// add it to the collection
+		collections.tenants[tenant.Key] = &tenant
+	}
+
+	return nil
+}
+
+// Validate a tenant object
+func ValidateTenant(obj *Tenant) error {
+	// Validate key is correct
+	keyStr := obj.TenantName
+	if obj.Key != keyStr {
+		log.Errorf("Expecting Tenant Key: %s. Got: %s", keyStr, obj.Key)
+		return errors.New("Invalid Key")
+	}
+
+	// Validate each field
 
 	return nil
 }

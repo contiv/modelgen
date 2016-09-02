@@ -76,7 +76,7 @@ func TranslateCfgPropertyType(propType string) string {
 	case "bool":
 		return propType
 	default:
-		return InitialCap(propType)+"Cfg"
+		return InitialCap(propType)
 	}
 
 	return goStr
