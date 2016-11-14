@@ -1,0 +1,6 @@
+{{ range .Objects }} {{ if .CfgProperties | len }}
+func Get{{ initialCap .Name }}ObjCount() int {
+	return len(collections.{{ .Name }}s)
+}
+{{ end }}
+{{ end }}

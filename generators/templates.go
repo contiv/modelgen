@@ -411,6 +411,14 @@ var {{ initialCap .Name }}ModalView = React.createClass({
 module.exports.{{ initialCap .Name }}SummaryView = {{ initialCap .Name }}SummaryView
 module.exports.{{ initialCap .Name }}ModalView = {{ initialCap .Name }}ModalView
   `,
+	"objcount": `
+{{ range .Objects }} {{ if .CfgProperties | len }}
+func Get{{ initialCap .Name }}Count() int {
+	return len(collections.{{ .Name }}s)
+}
+{{ end }}
+{{ end }}
+  `,
 	"objstruct": `
 {{ if .CfgProperties | len }}
 type {{ initialCap .Name }} struct {

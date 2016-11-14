@@ -81,7 +81,7 @@ func (s *Schema) GenerateGoStructs() ([]byte, error) {
 		goBytes = append(goBytes, objBytes...)
 	}
 
-	for _, name := range []string{"gostructs", "callbacks", "init", "register"} {
+	for _, name := range []string{"gostructs", "callbacks", "init", "objcount", "register"} {
 		byts, err := generators.RunTemplate(name, s)
 		if err != nil {
 			return nil, err
