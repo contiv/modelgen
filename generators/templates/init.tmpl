@@ -1,5 +1,9 @@
 func Init() {
-  {{ range .Objects }} {{ if .CfgProperties | len }} collections.{{ .Name }}s = make(map[string]*{{ initialCap .Name }}) {{ end }}
+  {{ range .Objects }}
+  {{ if .CfgProperties | len }}
+  collections.{{ .Name }}s = make(map[string]*{{ initialCap .Name }})
+  {{ end }}
+
   {{ end }}
   {{ range .Objects }} {{ if .CfgProperties | len }} restore{{ initialCap .Name}}() {{ end }}
   {{ end }}
