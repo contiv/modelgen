@@ -309,7 +309,11 @@ type {{ initialCap .Name }}Inspect struct {
   `,
 	"gostructs": `
 type Collections struct {
-  {{ range .Objects }} {{ if .CfgProperties | len }} {{ .Name }}s map[string]*{{ initialCap .Name }} {{ end }}
+  {{ range .Objects }}
+  {{ if .CfgProperties | len }}
+  {{ .Name }}Mutex sync.Mutex
+  {{ .Name }}s map[string]*{{ initialCap .Name }}
+  {{ end }}
   {{ end }}
 }
 
@@ -327,6 +331,7 @@ import (
 	"regexp"
 	"net/http"
 	"encoding/json"
+  "sync"
 	"github.com/contiv/objdb/modeldb"
 	"github.com/gorilla/mux"
 	log "github.com/Sirupsen/logrus"
@@ -336,7 +341,11 @@ type HttpApiFunc func(w http.ResponseWriter, r *http.Request, vars map[string]st
   `,
 	"init": `
 func Init() {
-  {{ range .Objects }} {{ if .CfgProperties | len }} collections.{{ .Name }}s = make(map[string]*{{ initialCap .Name }}) {{ end }}
+  {{ range .Objects }}
+  {{ if .CfgProperties | len }}
+  collections.{{ .Name }}s = make(map[string]*{{ initialCap .Name }})
+  {{ end }}
+
   {{ end }}
   {{ range .Objects }} {{ if .CfgProperties | len }} restore{{ initialCap .Name}}() {{ end }}
   {{ end }}
@@ -419,14 +428,16 @@ type {{ initialCap .Name }} struct {
 
 {{ if .LinkSets | len }}
 type {{ initialCap .Name }}LinkSets struct {
-  {{ range .LinkSets }} {{ initialCap .Name }}	map[string]modeldb.Link		` + "`" + `json:"{{ .Name }},omitempty"` + "`" + `
+  {{ range .LinkSets }}
+  {{ initialCap .Name }}	map[string]modeldb.Link		` + "`" + `json:"{{ .Name }},omitempty"` + "`" + `
   {{end}}
 }
 {{ end }}
 
 {{ if .Links | len }}
 type {{ initialCap .Name }}Links struct {
-  {{ range .Links }} {{ initialCap .Name }} modeldb.Link	` + "`" + `json:"{{ .Name }},omitempty"` + "`" + `
+  {{ range .Links }} 
+  {{ initialCap .Name }} modeldb.Link	` + "`" + `json:"{{ .Name }},omitempty"` + "`" + `
   {{ end }}
 }
 {{ end }}
@@ -658,6 +669,8 @@ func httpInspect{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, v
 {{ if .CfgProperties | len }}
 	key := vars["key"]
 
+  collections.{{ .Name }}Mutex.Lock()
+  defer collections.{{ .Name }}Mutex.Unlock()
 	objConfig := collections.{{ .Name }}s[key]
 	if objConfig == nil {
 		log.Errorf("{{ .Name }} %s not found", key)
@@ -706,6 +719,8 @@ func httpList{{ initialCap .Name }}s(w http.ResponseWriter, r *http.Request, var
 	log.Debugf("Received httpList{{ initialCap .Name }}s: %+v", vars)
 
 	list := make([]*{{ initialCap .Name }}, 0)
+  collections.{{ .Name }}Mutex.Lock()
+  defer collections.{{ .Name }}Mutex.Unlock()
 	for _, obj := range collections.{{ .Name }}s {
 		list = append(list, obj)
 	}
@@ -720,6 +735,8 @@ func httpGet{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars 
 
 	key := vars["key"]
 
+  collections.{{ .Name }}Mutex.Lock()
+  defer collections.{{ .Name }}Mutex.Unlock()
 	obj := collections.{{ .Name }}s[key]
 	if obj == nil {
 		log.Errorf("{{ .Name }} %s not found", key)
@@ -792,8 +809,12 @@ func Create{{ initialCap .Name }}(obj *{{ initialCap .Name }}) error {
 
 	saveObj := obj
 
+  collections.{{ .Name }}Mutex.Lock()
+  key := collections.{{ .Name }}s[obj.Key]
+  collections.{{ .Name }}Mutex.Unlock()
+
 	// Check if object already exists
-	if collections.{{ .Name }}s[obj.Key] != nil {
+	if key != nil {
 		// Perform Update callback
 		err = objCallbackHandler.{{ initialCap .Name }}Cb.{{ initialCap .Name }}Update(collections.{{ .Name }}s[obj.Key], obj)
 		if err != nil {
@@ -802,22 +823,30 @@ func Create{{ initialCap .Name }}(obj *{{ initialCap .Name }}) error {
 		}
 
 		// save the original object after update
+    collections.{{ .Name }}Mutex.Lock()
 		saveObj = collections.{{ .Name }}s[obj.Key]
+    collections.{{ .Name }}Mutex.Unlock()
 	} else {
 		// save it in cache
+    collections.{{ .Name }}Mutex.Lock()
 		collections.{{ .Name }}s[obj.Key] = obj
+    collections.{{ .Name }}Mutex.Unlock()
 
 		// Perform Create callback
 		err = objCallbackHandler.{{ initialCap .Name }}Cb.{{ initialCap .Name }}Create(obj)
 		if err != nil {
 			log.Errorf("{{ initialCap .Name }}Create retruned error for: %+v. Err: %v", obj, err)
+      collections.{{ .Name }}Mutex.Lock()
 			delete(collections.{{ .Name }}s, obj.Key)
+      collections.{{ .Name }}Mutex.Unlock()
 			return err
 		}
 	}
 
 	// Write it to modeldb
+  collections.{{ .Name }}Mutex.Lock()
 	err = saveObj.Write()
+  collections.{{ .Name }}Mutex.Unlock()
 	if err != nil {
 		log.Errorf("Error saving {{ .Name }} %s to db. Err: %v", saveObj.Key, err)
 		return err
@@ -828,6 +857,9 @@ func Create{{ initialCap .Name }}(obj *{{ initialCap .Name }}) error {
 
 // Return a pointer to {{ .Name }} from collection
 func Find{{ initialCap .Name }}(key string) *{{ initialCap .Name }} {
+  collections.{{ .Name }}Mutex.Lock()
+  defer collections.{{ .Name }}Mutex.Unlock()
+
 	obj := collections.{{ .Name }}s[key]
 	if obj == nil {
 		return nil
@@ -838,7 +870,9 @@ func Find{{ initialCap .Name }}(key string) *{{ initialCap .Name }} {
 
 // Delete a {{ .Name }} object
 func Delete{{ initialCap .Name }}(key string) error {
+  collections.{{ .Name }}Mutex.Lock()
 	obj := collections.{{ .Name }}s[key]
+  collections.{{ .Name }}Mutex.Unlock()
 	if obj == nil {
 		log.Errorf("{{ .Name }} %s not found", key)
 		return errors.New("{{ .Name }} not found")
@@ -858,13 +892,17 @@ func Delete{{ initialCap .Name }}(key string) error {
 	}
 
 	// delete it from modeldb
+  collections.{{ .Name }}Mutex.Lock()
 	err = obj.Delete()
+  collections.{{ .Name }}Mutex.Unlock()
 	if err != nil {
 		log.Errorf("Error deleting {{ .Name }} %s. Err: %v", obj.Key, err)
 	}
 
 	// delete it from cache
+  collections.{{ .Name }}Mutex.Lock()
 	delete(collections.{{ .Name }}s, key)
+  collections.{{ .Name }}Mutex.Unlock()
 
 	return nil
 }
@@ -905,6 +943,9 @@ func (self *{{ initialCap .Name }}) Delete() error {
 }
 
 func restore{{ initialCap .Name }}() error {
+  collections.{{ .Name }}Mutex.Lock()
+  defer collections.{{ .Name }}Mutex.Unlock()
+
 	strList, err := modeldb.ReadAllObj("{{ .Name }}")
 	if err != nil {
 		log.Errorf("Error reading {{ .Name }} list. Err: %v", err)
@@ -928,6 +969,9 @@ func restore{{ initialCap .Name }}() error {
 
 // Validate a {{.Name}} object
 func Validate{{initialCap .Name}}(obj *{{initialCap .Name}}) error {
+  collections.{{ .Name }}Mutex.Lock()
+  defer collections.{{ .Name }}Mutex.Unlock()
+
 	// Validate key is correct
 	keyStr := {{range $index, $element := .Key}}{{if eq 0 $index }}obj.{{initialCap .}} {{else}}+ ":" + obj.{{initialCap .}} {{end}}{{end}}
 	if obj.Key != keyStr {

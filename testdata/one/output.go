@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	"regexp"
+	"sync"
 )
 
 type HttpApiFunc func(w http.ResponseWriter, r *http.Request, vars map[string]string) (interface{}, error)
@@ -137,10 +138,14 @@ type TenantInspect struct {
 	Config Tenant
 }
 type Collections struct {
-	networks map[string]*Network
-	netTwos  map[string]*NetTwo
+	networkMutex sync.Mutex
+	networks     map[string]*Network
 
-	tenants map[string]*Tenant
+	netTwoMutex sync.Mutex
+	netTwos     map[string]*NetTwo
+
+	tenantMutex sync.Mutex
+	tenants     map[string]*Tenant
 }
 
 var collections Collections
@@ -191,6 +196,7 @@ var objCallbackHandler CallbackHandlers
 func Init() {
 
 	collections.networks = make(map[string]*Network)
+
 	collections.netTwos = make(map[string]*NetTwo)
 
 	collections.tenants = make(map[string]*Tenant)
@@ -390,6 +396,8 @@ func httpInspectNetwork(w http.ResponseWriter, r *http.Request, vars map[string]
 
 	key := vars["key"]
 
+	collections.networkMutex.Lock()
+	defer collections.networkMutex.Unlock()
 	objConfig := collections.networks[key]
 	if objConfig == nil {
 		log.Errorf("network %s not found", key)
@@ -406,6 +414,8 @@ func httpListNetworks(w http.ResponseWriter, r *http.Request, vars map[string]st
 	log.Debugf("Received httpListNetworks: %+v", vars)
 
 	list := make([]*Network, 0)
+	collections.networkMutex.Lock()
+	defer collections.networkMutex.Unlock()
 	for _, obj := range collections.networks {
 		list = append(list, obj)
 	}
@@ -420,6 +430,8 @@ func httpGetNetwork(w http.ResponseWriter, r *http.Request, vars map[string]stri
 
 	key := vars["key"]
 
+	collections.networkMutex.Lock()
+	defer collections.networkMutex.Unlock()
 	obj := collections.networks[key]
 	if obj == nil {
 		log.Errorf("network %s not found", key)
@@ -492,8 +504,12 @@ func CreateNetwork(obj *Network) error {
 
 	saveObj := obj
 
+	collections.networkMutex.Lock()
+	key := collections.networks[obj.Key]
+	collections.networkMutex.Unlock()
+
 	// Check if object already exists
-	if collections.networks[obj.Key] != nil {
+	if key != nil {
 		// Perform Update callback
 		err = objCallbackHandler.NetworkCb.NetworkUpdate(collections.networks[obj.Key], obj)
 		if err != nil {
@@ -502,22 +518,30 @@ func CreateNetwork(obj *Network) error {
 		}
 
 		// save the original object after update
+		collections.networkMutex.Lock()
 		saveObj = collections.networks[obj.Key]
+		collections.networkMutex.Unlock()
 	} else {
 		// save it in cache
+		collections.networkMutex.Lock()
 		collections.networks[obj.Key] = obj
+		collections.networkMutex.Unlock()
 
 		// Perform Create callback
 		err = objCallbackHandler.NetworkCb.NetworkCreate(obj)
 		if err != nil {
 			log.Errorf("NetworkCreate retruned error for: %+v. Err: %v", obj, err)
+			collections.networkMutex.Lock()
 			delete(collections.networks, obj.Key)
+			collections.networkMutex.Unlock()
 			return err
 		}
 	}
 
 	// Write it to modeldb
+	collections.networkMutex.Lock()
 	err = saveObj.Write()
+	collections.networkMutex.Unlock()
 	if err != nil {
 		log.Errorf("Error saving network %s to db. Err: %v", saveObj.Key, err)
 		return err
@@ -528,6 +552,9 @@ func CreateNetwork(obj *Network) error {
 
 // Return a pointer to network from collection
 func FindNetwork(key string) *Network {
+	collections.networkMutex.Lock()
+	defer collections.networkMutex.Unlock()
+
 	obj := collections.networks[key]
 	if obj == nil {
 		return nil
@@ -538,7 +565,9 @@ func FindNetwork(key string) *Network {
 
 // Delete a network object
 func DeleteNetwork(key string) error {
+	collections.networkMutex.Lock()
 	obj := collections.networks[key]
+	collections.networkMutex.Unlock()
 	if obj == nil {
 		log.Errorf("network %s not found", key)
 		return errors.New("network not found")
@@ -558,13 +587,17 @@ func DeleteNetwork(key string) error {
 	}
 
 	// delete it from modeldb
+	collections.networkMutex.Lock()
 	err = obj.Delete()
+	collections.networkMutex.Unlock()
 	if err != nil {
 		log.Errorf("Error deleting network %s. Err: %v", obj.Key, err)
 	}
 
 	// delete it from cache
+	collections.networkMutex.Lock()
 	delete(collections.networks, key)
+	collections.networkMutex.Unlock()
 
 	return nil
 }
@@ -605,6 +638,9 @@ func (self *Network) Delete() error {
 }
 
 func restoreNetwork() error {
+	collections.networkMutex.Lock()
+	defer collections.networkMutex.Unlock()
+
 	strList, err := modeldb.ReadAllObj("network")
 	if err != nil {
 		log.Errorf("Error reading network list. Err: %v", err)
@@ -628,6 +664,9 @@ func restoreNetwork() error {
 
 // Validate a network object
 func ValidateNetwork(obj *Network) error {
+	collections.networkMutex.Lock()
+	defer collections.networkMutex.Unlock()
+
 	// Validate key is correct
 	keyStr := obj.TenantName + ":" + obj.NetworkName
 	if obj.Key != keyStr {
@@ -676,6 +715,8 @@ func httpInspectNetTwo(w http.ResponseWriter, r *http.Request, vars map[string]s
 
 	key := vars["key"]
 
+	collections.netTwoMutex.Lock()
+	defer collections.netTwoMutex.Unlock()
 	objConfig := collections.netTwos[key]
 	if objConfig == nil {
 		log.Errorf("netTwo %s not found", key)
@@ -715,6 +756,8 @@ func httpListNetTwos(w http.ResponseWriter, r *http.Request, vars map[string]str
 	log.Debugf("Received httpListNetTwos: %+v", vars)
 
 	list := make([]*NetTwo, 0)
+	collections.netTwoMutex.Lock()
+	defer collections.netTwoMutex.Unlock()
 	for _, obj := range collections.netTwos {
 		list = append(list, obj)
 	}
@@ -729,6 +772,8 @@ func httpGetNetTwo(w http.ResponseWriter, r *http.Request, vars map[string]strin
 
 	key := vars["key"]
 
+	collections.netTwoMutex.Lock()
+	defer collections.netTwoMutex.Unlock()
 	obj := collections.netTwos[key]
 	if obj == nil {
 		log.Errorf("netTwo %s not found", key)
@@ -801,8 +846,12 @@ func CreateNetTwo(obj *NetTwo) error {
 
 	saveObj := obj
 
+	collections.netTwoMutex.Lock()
+	key := collections.netTwos[obj.Key]
+	collections.netTwoMutex.Unlock()
+
 	// Check if object already exists
-	if collections.netTwos[obj.Key] != nil {
+	if key != nil {
 		// Perform Update callback
 		err = objCallbackHandler.NetTwoCb.NetTwoUpdate(collections.netTwos[obj.Key], obj)
 		if err != nil {
@@ -811,22 +860,30 @@ func CreateNetTwo(obj *NetTwo) error {
 		}
 
 		// save the original object after update
+		collections.netTwoMutex.Lock()
 		saveObj = collections.netTwos[obj.Key]
+		collections.netTwoMutex.Unlock()
 	} else {
 		// save it in cache
+		collections.netTwoMutex.Lock()
 		collections.netTwos[obj.Key] = obj
+		collections.netTwoMutex.Unlock()
 
 		// Perform Create callback
 		err = objCallbackHandler.NetTwoCb.NetTwoCreate(obj)
 		if err != nil {
 			log.Errorf("NetTwoCreate retruned error for: %+v. Err: %v", obj, err)
+			collections.netTwoMutex.Lock()
 			delete(collections.netTwos, obj.Key)
+			collections.netTwoMutex.Unlock()
 			return err
 		}
 	}
 
 	// Write it to modeldb
+	collections.netTwoMutex.Lock()
 	err = saveObj.Write()
+	collections.netTwoMutex.Unlock()
 	if err != nil {
 		log.Errorf("Error saving netTwo %s to db. Err: %v", saveObj.Key, err)
 		return err
@@ -837,6 +894,9 @@ func CreateNetTwo(obj *NetTwo) error {
 
 // Return a pointer to netTwo from collection
 func FindNetTwo(key string) *NetTwo {
+	collections.netTwoMutex.Lock()
+	defer collections.netTwoMutex.Unlock()
+
 	obj := collections.netTwos[key]
 	if obj == nil {
 		return nil
@@ -847,7 +907,9 @@ func FindNetTwo(key string) *NetTwo {
 
 // Delete a netTwo object
 func DeleteNetTwo(key string) error {
+	collections.netTwoMutex.Lock()
 	obj := collections.netTwos[key]
+	collections.netTwoMutex.Unlock()
 	if obj == nil {
 		log.Errorf("netTwo %s not found", key)
 		return errors.New("netTwo not found")
@@ -867,13 +929,17 @@ func DeleteNetTwo(key string) error {
 	}
 
 	// delete it from modeldb
+	collections.netTwoMutex.Lock()
 	err = obj.Delete()
+	collections.netTwoMutex.Unlock()
 	if err != nil {
 		log.Errorf("Error deleting netTwo %s. Err: %v", obj.Key, err)
 	}
 
 	// delete it from cache
+	collections.netTwoMutex.Lock()
 	delete(collections.netTwos, key)
+	collections.netTwoMutex.Unlock()
 
 	return nil
 }
@@ -914,6 +980,9 @@ func (self *NetTwo) Delete() error {
 }
 
 func restoreNetTwo() error {
+	collections.netTwoMutex.Lock()
+	defer collections.netTwoMutex.Unlock()
+
 	strList, err := modeldb.ReadAllObj("netTwo")
 	if err != nil {
 		log.Errorf("Error reading netTwo list. Err: %v", err)
@@ -937,6 +1006,9 @@ func restoreNetTwo() error {
 
 // Validate a netTwo object
 func ValidateNetTwo(obj *NetTwo) error {
+	collections.netTwoMutex.Lock()
+	defer collections.netTwoMutex.Unlock()
+
 	// Validate key is correct
 	keyStr := obj.TenantName + ":" + obj.NetworkName
 	if obj.Key != keyStr {
@@ -1019,6 +1091,8 @@ func httpInspectTenant(w http.ResponseWriter, r *http.Request, vars map[string]s
 
 	key := vars["key"]
 
+	collections.tenantMutex.Lock()
+	defer collections.tenantMutex.Unlock()
 	objConfig := collections.tenants[key]
 	if objConfig == nil {
 		log.Errorf("tenant %s not found", key)
@@ -1035,6 +1109,8 @@ func httpListTenants(w http.ResponseWriter, r *http.Request, vars map[string]str
 	log.Debugf("Received httpListTenants: %+v", vars)
 
 	list := make([]*Tenant, 0)
+	collections.tenantMutex.Lock()
+	defer collections.tenantMutex.Unlock()
 	for _, obj := range collections.tenants {
 		list = append(list, obj)
 	}
@@ -1049,6 +1125,8 @@ func httpGetTenant(w http.ResponseWriter, r *http.Request, vars map[string]strin
 
 	key := vars["key"]
 
+	collections.tenantMutex.Lock()
+	defer collections.tenantMutex.Unlock()
 	obj := collections.tenants[key]
 	if obj == nil {
 		log.Errorf("tenant %s not found", key)
@@ -1121,8 +1199,12 @@ func CreateTenant(obj *Tenant) error {
 
 	saveObj := obj
 
+	collections.tenantMutex.Lock()
+	key := collections.tenants[obj.Key]
+	collections.tenantMutex.Unlock()
+
 	// Check if object already exists
-	if collections.tenants[obj.Key] != nil {
+	if key != nil {
 		// Perform Update callback
 		err = objCallbackHandler.TenantCb.TenantUpdate(collections.tenants[obj.Key], obj)
 		if err != nil {
@@ -1131,22 +1213,30 @@ func CreateTenant(obj *Tenant) error {
 		}
 
 		// save the original object after update
+		collections.tenantMutex.Lock()
 		saveObj = collections.tenants[obj.Key]
+		collections.tenantMutex.Unlock()
 	} else {
 		// save it in cache
+		collections.tenantMutex.Lock()
 		collections.tenants[obj.Key] = obj
+		collections.tenantMutex.Unlock()
 
 		// Perform Create callback
 		err = objCallbackHandler.TenantCb.TenantCreate(obj)
 		if err != nil {
 			log.Errorf("TenantCreate retruned error for: %+v. Err: %v", obj, err)
+			collections.tenantMutex.Lock()
 			delete(collections.tenants, obj.Key)
+			collections.tenantMutex.Unlock()
 			return err
 		}
 	}
 
 	// Write it to modeldb
+	collections.tenantMutex.Lock()
 	err = saveObj.Write()
+	collections.tenantMutex.Unlock()
 	if err != nil {
 		log.Errorf("Error saving tenant %s to db. Err: %v", saveObj.Key, err)
 		return err
@@ -1157,6 +1247,9 @@ func CreateTenant(obj *Tenant) error {
 
 // Return a pointer to tenant from collection
 func FindTenant(key string) *Tenant {
+	collections.tenantMutex.Lock()
+	defer collections.tenantMutex.Unlock()
+
 	obj := collections.tenants[key]
 	if obj == nil {
 		return nil
@@ -1167,7 +1260,9 @@ func FindTenant(key string) *Tenant {
 
 // Delete a tenant object
 func DeleteTenant(key string) error {
+	collections.tenantMutex.Lock()
 	obj := collections.tenants[key]
+	collections.tenantMutex.Unlock()
 	if obj == nil {
 		log.Errorf("tenant %s not found", key)
 		return errors.New("tenant not found")
@@ -1187,13 +1282,17 @@ func DeleteTenant(key string) error {
 	}
 
 	// delete it from modeldb
+	collections.tenantMutex.Lock()
 	err = obj.Delete()
+	collections.tenantMutex.Unlock()
 	if err != nil {
 		log.Errorf("Error deleting tenant %s. Err: %v", obj.Key, err)
 	}
 
 	// delete it from cache
+	collections.tenantMutex.Lock()
 	delete(collections.tenants, key)
+	collections.tenantMutex.Unlock()
 
 	return nil
 }
@@ -1234,6 +1333,9 @@ func (self *Tenant) Delete() error {
 }
 
 func restoreTenant() error {
+	collections.tenantMutex.Lock()
+	defer collections.tenantMutex.Unlock()
+
 	strList, err := modeldb.ReadAllObj("tenant")
 	if err != nil {
 		log.Errorf("Error reading tenant list. Err: %v", err)
@@ -1257,6 +1359,9 @@ func restoreTenant() error {
 
 // Validate a tenant object
 func ValidateTenant(obj *Tenant) error {
+	collections.tenantMutex.Lock()
+	defer collections.tenantMutex.Unlock()
+
 	// Validate key is correct
 	keyStr := obj.TenantName
 	if obj.Key != keyStr {

@@ -1,5 +1,9 @@
 type Collections struct {
-  {{ range .Objects }} {{ if .CfgProperties | len }} {{ .Name }}s map[string]*{{ initialCap .Name }} {{ end }}
+  {{ range .Objects }}
+  {{ if .CfgProperties | len }}
+  {{ .Name }}Mutex sync.Mutex
+  {{ .Name }}s map[string]*{{ initialCap .Name }}
+  {{ end }}
   {{ end }}
 }
 

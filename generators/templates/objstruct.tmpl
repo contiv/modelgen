@@ -14,14 +14,16 @@ type {{ initialCap .Name }} struct {
 
 {{ if .LinkSets | len }}
 type {{ initialCap .Name }}LinkSets struct {
-  {{ range .LinkSets }} {{ initialCap .Name }}	map[string]modeldb.Link		`json:"{{ .Name }},omitempty"`
+  {{ range .LinkSets }}
+  {{ initialCap .Name }}	map[string]modeldb.Link		`json:"{{ .Name }},omitempty"`
   {{end}}
 }
 {{ end }}
 
 {{ if .Links | len }}
 type {{ initialCap .Name }}Links struct {
-  {{ range .Links }} {{ initialCap .Name }} modeldb.Link	`json:"{{ .Name }},omitempty"`
+  {{ range .Links }} 
+  {{ initialCap .Name }} modeldb.Link	`json:"{{ .Name }},omitempty"`
   {{ end }}
 }
 {{ end }}
