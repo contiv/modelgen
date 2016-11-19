@@ -208,6 +208,18 @@ func Init() {
 
 }
 
+func GetNetworkCount() int {
+	return len(collections.networks)
+}
+
+func GetNetTwoCount() int {
+	return len(collections.netTwos)
+}
+
+func GetTenantCount() int {
+	return len(collections.tenants)
+}
+
 func RegisterEndpointCallbacks(handler EndpointCallbacks) {
 	objCallbackHandler.EndpointCb = handler
 }
