@@ -1,4 +1,5 @@
 {{ if .CfgProperties | len }}
+// {{ initialCap .Name }} object
 type {{ initialCap .Name }} struct {
 	// every object has a key
 	Key		string		`json:"key,omitempty"`
@@ -13,6 +14,7 @@ type {{ initialCap .Name }} struct {
 }
 
 {{ if .LinkSets | len }}
+// {{ initialCap .Name }}LinkSets list of internal links
 type {{ initialCap .Name }}LinkSets struct {
   {{ range .LinkSets }} {{ initialCap .Name }}	map[string]Link		`json:"{{ .Name }},omitempty"`
   {{end}}
@@ -20,6 +22,7 @@ type {{ initialCap .Name }}LinkSets struct {
 {{ end }}
 
 {{ if .Links | len }}
+// {{ initialCap .Name }}Links internal links to other object
 type {{ initialCap .Name }}Links struct {
   {{ range .Links }} {{ initialCap .Name }} Link	`json:"{{ .Name }},omitempty"`
   {{ end }}
@@ -28,6 +31,7 @@ type {{ initialCap .Name }}Links struct {
 {{ end }}
 
 {{ if .OperProperties | len }}
+// {{ initialCap .Name }}Oper runtime operations
 type {{ initialCap .Name }}Oper struct {
   {{ range .OperProperties }} {{ .GenerateGoStructs }} {{ end }}
 
@@ -39,6 +43,7 @@ type {{ initialCap .Name }}Oper struct {
 }
 {{ end }}
 
+// {{ initialCap .Name }}Inspect inspect information
 type {{ initialCap .Name }}Inspect struct {
 	{{ if .CfgProperties }}
 	Config		{{ initialCap .Name }}
