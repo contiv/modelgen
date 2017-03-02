@@ -1,20 +1,21 @@
-all: test
 
-build: godep generator
-	godep go install -v
+.PHONY: all build generator godep test
 
-godep:
-	@if [ -z "`which godep`" ]; then go get -v github.com/kr/godep; fi
+all: build test
 
-vet:
-	@(go tool | grep vet) || go get -v golang.org/x/tools/cmd/vet
+# build runs the generator script and compiles and installs the code
+build: generator
+	go install -v
 
+# generator runs a script which dynamically generates a .go file from the
+# .tmpl files in the "templates" directory
 generator:
 	cd generators && bash build.sh >templates.go && gofmt -w -s templates.go
 
-test: godep
-	godep go test -v ./...
+# godep updates Godeps/Godeps.json
+godep:
+	godep save ./...
 
-reflex:
-	# go get github.com/cespare/reflex
-	reflex -r '.*\.go' -R generators/templates.go make test
+# test runs all the tests
+test:
+	go test -v ./...
