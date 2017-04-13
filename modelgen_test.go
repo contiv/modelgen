@@ -80,9 +80,9 @@ func TestParseJsonSchema(t *testing.T) {
 			t.Fatal(err)
 		}
 
-        if schema == nil {
-            t.Fatal("Could not find schema, aborting.")
-        }
+		if schema == nil {
+			t.Fatal("Could not find schema, aborting.")
+		}
 
 		// Generate the code
 		goStr, err := schema.GenerateGo()
