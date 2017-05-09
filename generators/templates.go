@@ -29,29 +29,29 @@ var objCallbackHandler CallbackHandlers
 //
 // Concepts and Terminology:
 //
-// Tenant : 
+// Tenant :
 // Tenants provides namespace isolation for networks. It is the toplevel object where networks
-// and policies are defiend. 
-// A tenant can have many networks, each with its own subnet address, among other information. 
-// A user can create networks with arbtrary subnet addresses within a tenant namespace, 
-// possibly reusing subnet IP addresses in other tenants. This provides complete freedom to a 
+// and policies are defiend.
+// A tenant can have many networks, each with its own subnet address, among other information.
+// A user can create networks with arbtrary subnet addresses within a tenant namespace,
+// possibly reusing subnet IP addresses in other tenants. This provides complete freedom to a
 // tenant user to specify the network names and their subnets within a tenant.
 //
 // Network:
-// Network is an IPv4 or IPv6 subnet that may be provided with a default gateway. 
+// Network is an IPv4 or IPv6 subnet that may be provided with a default gateway.
 // For example, a network can map to a subnet 10.1.1.0/24 that has a default gateway of 10.1.1.1.
 //
 // Policies:
-// A policy describes an operational behavior on a group of containers. 
-// The operational behavior can be enforcement, allocation, prioritation, traffic redirection, 
-// stats collection, or other action on the group on which the policy is applied. For example, 
-// an inbound security policy on a database tier can specify the allowed ports on the containers 
+// A policy describes an operational behavior on a group of containers.
+// The operational behavior can be enforcement, allocation, prioritation, traffic redirection,
+// stats collection, or other action on the group on which the policy is applied. For example,
+// an inbound security policy on a database tier can specify the allowed ports on the containers
 // belonging to the group.
-// 
+//
 // EndpointGroups:
-// Endpoint group (or an application group) identifies a policy domain for a container or a pod. 
-// The grouping is an arbitrary collection of containers that share a specific application domain, 
-// for example all production,frontend containers, or backup,long-running containers. 
+// Endpoint group (or an application group) identifies a policy domain for a container or a pod.
+// The grouping is an arbitrary collection of containers that share a specific application domain,
+// for example all production,frontend containers, or backup,long-running containers.
 // This association is often done by specifying label in kubernetes pod spec
 //
 // contiv object model is shown here https://github.com/contiv/modelgen/blob/master/docs/contivModel.png
@@ -91,6 +91,8 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"regexp"
+	"strings"
 
 	log "github.com/Sirupsen/logrus"
 )
@@ -101,9 +103,16 @@ type Link struct {
 	ObjKey  string ` + "`" + `json:"key,omitempty"` + "`" + `
 }
 
-func httpGet(url string, jdata interface{}) error {
+func (c *ContivClient) httpGet(url string, jdata interface{}) error {
 
-	r, err := http.Get(url)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	c.processCustomHeaders(req)
+
+	r, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -139,13 +148,18 @@ func httpGet(url string, jdata interface{}) error {
 	return nil
 }
 
-func httpDelete(url string) error {
+func (c *ContivClient) httpDelete(url string) error {
 
 	req, err := http.NewRequest("DELETE", url, nil)
-
-	r, err := http.DefaultClient.Do(req)
 	if err != nil {
-		panic(err)
+		return err
+	}
+
+	c.processCustomHeaders(req)
+
+	r, err := c.httpClient.Do(req)
+	if err != nil {
+		return err
 	}
 	defer r.Body.Close()
 
@@ -173,14 +187,22 @@ func httpDelete(url string) error {
 	return nil
 }
 
-func httpPost(url string, jdata interface{}) error {
+func (c *ContivClient) httpPost(url string, jdata interface{}) error {
 	buf, err := json.Marshal(jdata)
 	if err != nil {
 		return err
 	}
 
 	body := bytes.NewBuffer(buf)
-	r, err := http.Post(url, "application/json", body)
+
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return err
+	}
+
+	c.processCustomHeaders(req)
+
+	r, err := c.httpClient.Do(req)
 	if err != nil {
 		return err
 	}
@@ -215,16 +237,143 @@ func httpPost(url string, jdata interface{}) error {
 
 // ContivClient has the contiv model client instance
 type ContivClient struct {
+	// URL of netmaster (http) or auth_proxy (https)
 	baseURL string
+
+	// these pairs will be added as HTTP request headers before any request
+	// is sent by this client. (each pair = one "Name: value" header).
+	// names stored in this list will be lowercase but later canonicalized
+	// internally by Go when the request headers are added.
+	customRequestHeaders [][2]string
+
+	// even if not later overriden by SetHttpClient(), having a per-client
+	// http.Client means each client has its own dedicated pool of TCP
+	// keepalive connections for the target netmaster/auth_proxy.
+	httpClient *http.Client
 }
 
 // NewContivClient creates a new client instance
 func NewContivClient(baseURL string) (*ContivClient, error) {
+	ok, err := regexp.Match(` + "`" + `^https?://` + "`" + `, []byte(baseURL))
+	if !ok {
+		return nil, errors.New("invalid URL: must begin with http:// or https://")
+	} else if err != nil {
+		return nil, err
+	}
+
 	client := ContivClient{
-		baseURL: baseURL,
+		baseURL:              baseURL,
+		customRequestHeaders: [][2]string{},
+		httpClient:           &http.Client{},
 	}
 
 	return &client, nil
+}
+
+// SetHTTPClient replaces the internal *http.Client with a custom http client.
+// This can be used to disable cert checking, set timeouts, and so on.
+func (c *ContivClient) SetHTTPClient(newClient *http.Client) error {
+	if newClient == nil {
+		return errors.New("new http client cannot be nil")
+	}
+
+	c.httpClient = newClient
+
+	return nil
+}
+
+const authTokenHeader = "x-auth-token"
+
+// SetAuthToken sets the token used to authenticate with auth_proxy
+func (c *ContivClient) SetAuthToken(token string) error {
+
+	// setting an auth token is only allowed on secure requests.
+	// if we didn't enforce this, the client could potentially send auth
+	// tokens in plain text across the network.
+	if !c.isHTTPS() {
+		return errors.New("setting auth token requires a https auth_proxy URL")
+	}
+
+	// having multiple auth token headers is confusing and makes no sense and
+	// which one is actually used depends on the implementation of the server.
+	// therefore, we will raise an error if there's already an auth token set.
+	for _, pair := range c.customRequestHeaders {
+		if pair[0] == authTokenHeader {
+			return errors.New("an auth token has already been set")
+		}
+	}
+
+	c.addCustomRequestHeader(authTokenHeader, token)
+
+	return nil
+}
+
+func (c *ContivClient) isHTTPS() bool {
+	return strings.HasPrefix(c.baseURL, "https://")
+}
+
+type loginPayload struct {
+	Username string ` + "`" + `json:"username"` + "`" + `
+	Password string ` + "`" + `json:"password"` + "`" + `
+}
+
+// LoginPath is the path of auth_proxy's login endpoint
+const LoginPath = "/api/v1/auth_proxy/login/"
+
+// Login performs a login to auth_proxy and returns the response and body
+func (c *ContivClient) Login(username, password string) (*http.Response, []byte, error) {
+
+	// login is only allowed over a secure channel
+	if !c.isHTTPS() {
+		return nil, nil, errors.New("login requires a https auth_proxy URL")
+	}
+
+	url := c.baseURL + LoginPath
+
+	// create the POST payload for login
+	lp := loginPayload{
+		Username: username,
+		Password: password,
+	}
+
+	payload, err := json.Marshal(lp)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// send the login POST request
+	resp, err := c.httpClient.Post(url, "application/json", bytes.NewBuffer(payload))
+	if err != nil {
+		return nil, nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return resp, body, nil
+}
+
+// addCustomRequestHeader records a custom request header to be added to all outgoing requests
+func (c *ContivClient) addCustomRequestHeader(name, value string) {
+
+	// lowercase the header name so we can easily check for duplicates in other places.
+	// there can legitimately be many headers with the same name, but in some cases
+	// (e.g., auth token) we want to enforce that there is only one.
+	// Go internally canonicalizes them when we call Header.Add() anyways.
+	name = strings.ToLower(name)
+
+	c.customRequestHeaders = append(c.customRequestHeaders, [2]string{name, value})
+}
+
+// processCustomHeaders adds all custom request headers to the target request.
+// this function is called before a GET, POST, or DELETE is sent by the client.
+func (c *ContivClient) processCustomHeaders(req *http.Request) {
+	for _, pair := range c.customRequestHeaders {
+		req.Header.Add(pair[0], pair[1])
+	}
 }
   `,
 	"clientObj": `
@@ -236,7 +385,7 @@ func (c *ContivClient) {{ initialCap .Name }}Post(obj *{{ initialCap .Name }}) e
 	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
 
 	// http post the object
-	err := httpPost(url, obj)
+	err := c.httpPost(url, obj)
 	if err != nil {
 		log.Debugf("Error creating {{ .Name }} %+v. Err: %v", obj, err)
 		return err
@@ -252,7 +401,7 @@ func (c *ContivClient) {{ initialCap .Name }}List() (*[]*{{ initialCap .Name }},
 
 	// http get the object
 	var objList []*{{ initialCap .Name }}
-	err := httpGet(url, &objList)
+	err := c.httpGet(url, &objList)
 	if err != nil {
 		log.Debugf("Error getting {{ .Name }}s. Err: %v", err)
 		return nil, err
@@ -269,7 +418,7 @@ func (c *ContivClient) {{ initialCap .Name }}Get({{range $index, $element := .Ke
 
 	// http get the object
 	var obj {{ initialCap .Name }}
-	err := httpGet(url, &obj)
+	err := c.httpGet(url, &obj)
 	if err != nil {
 		log.Debugf("Error getting {{ .Name }} %+v. Err: %v", keyStr, err)
 		return nil, err
@@ -285,7 +434,7 @@ func (c *ContivClient) {{ initialCap .Name }}Delete({{range $index, $element := 
 	url := c.baseURL + "/api/{{.Version}}/{{ .Name }}s/" + keyStr + "/"
 
 	// http get the object
-	err := httpDelete(url)
+	err := c.httpDelete(url)
 	if err != nil {
 		log.Debugf("Error deleting {{ .Name }} %s. Err: %v", keyStr, err)
 		return err
@@ -303,7 +452,7 @@ func (c *ContivClient) {{ initialCap .Name }}Inspect({{range $index, $element :=
 
 	// http get the object
 	var obj {{ initialCap .Name }}Inspect
-	err := httpGet(url, &obj)
+	err := c.httpGet(url, &obj)
 	if err != nil {
 		log.Debugf("Error getting {{ .Name }} %+v. Err: %v", keyStr, err)
 		return nil, err
