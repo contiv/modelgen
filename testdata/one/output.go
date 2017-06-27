@@ -446,7 +446,7 @@ func httpGetNetwork(w http.ResponseWriter, r *http.Request, vars map[string]stri
 	defer collections.networkMutex.Unlock()
 	obj := collections.networks[key]
 	if obj == nil {
-		log.Errorf("network %s not found", key)
+		log.Infof("network %s not found", key)
 		return nil, errors.New("network not found")
 	}
 
@@ -788,7 +788,7 @@ func httpGetNetTwo(w http.ResponseWriter, r *http.Request, vars map[string]strin
 	defer collections.netTwoMutex.Unlock()
 	obj := collections.netTwos[key]
 	if obj == nil {
-		log.Errorf("netTwo %s not found", key)
+		log.Infof("netTwo %s not found", key)
 		return nil, errors.New("netTwo not found")
 	}
 
@@ -1141,7 +1141,7 @@ func httpGetTenant(w http.ResponseWriter, r *http.Request, vars map[string]strin
 	defer collections.tenantMutex.Unlock()
 	obj := collections.tenants[key]
 	if obj == nil {
-		log.Errorf("tenant %s not found", key)
+		log.Infof("tenant %s not found", key)
 		return nil, errors.New("tenant not found")
 	}
 
