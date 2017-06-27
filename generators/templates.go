@@ -959,7 +959,7 @@ func httpGet{{ initialCap .Name }}(w http.ResponseWriter, r *http.Request, vars 
   defer collections.{{ .Name }}Mutex.Unlock()
 	obj := collections.{{ .Name }}s[key]
 	if obj == nil {
-		log.Errorf("{{ .Name }} %s not found", key)
+		log.Infof("{{ .Name }} %s not found", key)
 		return nil, errors.New("{{ .Name }} not found")
 	}
 
