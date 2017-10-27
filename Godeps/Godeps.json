@@ -17,12 +17,14 @@
 			"Rev": "96f1fedb28e10f2e5ad3fd4b7347101529a7ca56"
 		},
 		{
-			"ImportPath": "github.com/contiv/objdb",
-			"Rev": "f59313040a109900f9f00dacb1b23c2f5f337f25"
+			"ImportPath": "github.com/contiv/netplugin/objdb",
+			"Comment": "1.1.0-rc.1-203-gc9a81dc",
+			"Rev": "c9a81dc045db774bf9a2b6fd8327f08b5ef64dcd"
 		},
 		{
-			"ImportPath": "github.com/contiv/objdb/modeldb",
-			"Rev": "f59313040a109900f9f00dacb1b23c2f5f337f25"
+			"ImportPath": "github.com/contiv/netplugin/objdb/modeldb",
+			"Comment": "1.1.0-rc.1-203-gc9a81dc",
+			"Rev": "c9a81dc045db774bf9a2b6fd8327f08b5ef64dcd"
 		},
 		{
 			"ImportPath": "github.com/coreos/etcd/Godeps/_workspace/src/github.com/ugorji/go/codec",

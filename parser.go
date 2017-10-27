@@ -30,11 +30,11 @@ var propList []*Property
 func init() {
 	validObjects = make(map[string]bool)
 
-    //Adding standard types as valid objects
-    validObjects["string"] = true
-    validObjects["int"] = true
-    validObjects["number"] = true
-    validObjects["bool"] = true
+	//Adding standard types as valid objects
+	validObjects["string"] = true
+	validObjects["int"] = true
+	validObjects["number"] = true
+	validObjects["bool"] = true
 }
 
 // ParseSchema parses the json schema and returns a Schema object
