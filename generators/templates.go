@@ -539,12 +539,12 @@ var collections Collections
 package {{.Name}}
 
 import (
-	"errors"
-	"regexp"
-	"net/http"
 	"encoding/json"
-  "sync"
-	"github.com/contiv/objdb/modeldb"
+	"errors"
+	"net/http"
+	"regexp"
+	"sync"
+	"github.com/contiv/netplugin/objdb/modeldb"
 	"github.com/gorilla/mux"
 	log "github.com/Sirupsen/logrus"
 )

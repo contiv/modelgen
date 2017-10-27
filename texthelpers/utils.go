@@ -94,7 +94,7 @@ func TranslateOperPropertyType(propType string) string {
 	case "bool":
 		return propType
 	default:
-		return InitialCap(propType)+"Oper"
+		return InitialCap(propType) + "Oper"
 	}
 
 	return goStr

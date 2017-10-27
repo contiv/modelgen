@@ -23,11 +23,11 @@ import (
 )
 
 var funcMap = template.FuncMap{
-	"initialCap":    texthelpers.InitialCap,
-	"initialLow":    texthelpers.InitialLow,
-	"depunct":       texthelpers.Depunct,
-	"capFirst":      texthelpers.CapFirst,
-	"translateCfgType": texthelpers.TranslateCfgPropertyType,
+	"initialCap":        texthelpers.InitialCap,
+	"initialLow":        texthelpers.InitialLow,
+	"depunct":           texthelpers.Depunct,
+	"capFirst":          texthelpers.CapFirst,
+	"translateCfgType":  texthelpers.TranslateCfgPropertyType,
 	"translateOperType": texthelpers.TranslateOperPropertyType,
 }
 
