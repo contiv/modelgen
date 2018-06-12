@@ -101,7 +101,7 @@ func main() {
     // Create policy
     err = client.PolicyPost(&policy)
     if err != nil {
-        log.Fatal("Policy Creation failed. Err: %v", err)
+        log.Fatalf("Policy Creation failed. Err: %v", err)
     }
 }
 ```
