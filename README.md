@@ -77,7 +77,7 @@ ContivModel has an in-memory cache of all objects for higher performance. Contro
 ### Using go client
 Here is an example of how to use contiv go client
 
-```
+```golang
 package main
 
 import (
@@ -99,9 +99,9 @@ func main() {
     }
     
     // Create policy
-    err = client.PostPolicy(policy)
+    err = client.PolicyPost(&policy)
     if err != nil {
-        log.Errorf("Policy Creation failed. Err: %v", err)
+        log.Fatalf("Policy Creation failed. Err: %v", err)
     }
 }
 ```
